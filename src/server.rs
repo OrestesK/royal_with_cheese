@@ -39,7 +39,7 @@ impl Server {
     }
 
     async fn send_data_to_client(mut client_write_connection: OwnedWriteHalf, data: String) {
-        let future = client_write_connection.write_all(data.as_bytes());
+        let _future = client_write_connection.write_all(data.as_bytes());
     }
 
     pub async fn initiate(&mut self) -> Result<(), Error> {

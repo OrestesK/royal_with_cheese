@@ -36,7 +36,7 @@ impl Client {
         let mut buffer: Vec<u8> = Vec::new();
 
         // Read input information
-        let future = reader.read_until(b'\n', &mut buffer);
+        let _future = reader.read_until(b'\n', &mut buffer);
 
         eprintln!("read from server: {:?}", buffer);
         eprintln!("");

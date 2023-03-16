@@ -1,6 +1,5 @@
 use cursive::views::{Dialog, TextView};
 
-use core::panicking::panic;
 use futures::executor::block_on;
 use royal_with_cheese::client::Client;
 use royal_with_cheese::server::Server;
@@ -24,14 +23,14 @@ async fn main() {
 }
 
 fn server() {
-    let mut server: Server = block_on(Server::new(ADDRESS, PORT)).unwrap_or_else();
+    let mut server: Server = block_on(Server::new(ADDRESS, PORT)).expect("Failed to create server");
     loop {
         block_on(Server::initiate(&mut server)).unwrap();
     }
 }
 
 fn client() {
-    //cursive();
+    cursive();
 
     let mut client: Client =
         block_on(Client::new(ADDRESS, PORT)).expect("Couldn't connect to address");
