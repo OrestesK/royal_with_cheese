@@ -1,65 +1,63 @@
-use std::io;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::thread;
-use std::time;
+use super::shared::Shared;
+use std::io::Error;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::tcp::OwnedReadHalf;
+use tokio::net::tcp::OwnedWriteHalf;
+use tokio::net::TcpListener;
 
 pub struct Server {
     pub address: String,
     pub connection: TcpListener,
+    pub shared: Shared,
 }
 
 impl Server {
-    pub fn new(ip: &str, port: &str) -> Result<Self, io::Error> {
-        let address = format!("{}:{}", ip, port);
-        let connection = TcpListener::bind(&address)?;
+    pub async fn new(ip: &str, port: &str) -> Result<Self, Error> {
+        let address = format!("{}:{}", ip, port); //formats address
+        let connection = TcpListener::bind(&address).await?; // binds server to address
+        eprintln!("Listening on: {}", address);
+        let shared = Shared::new()?; //creates 'Shared' Struct
         Ok(Server {
             address,
             connection,
+            shared,
         })
     }
 
-    fn receive_data(mut stream: TcpStream) -> Result<(), io::Error> {
-        // Handle multiple access stream
-        let mut buf = [0; 512];
-        for _ in 0..1000 {
-            // let the receiver get a message from a sender
-            let bytes_read = stream.read(&mut buf)?;
-            // sender stream in a mutable variable
-            if bytes_read == 0 {
-                return Ok(());
+    async fn read_data_from_client(mut client_read_connection: OwnedReadHalf) {
+        eprintln!("Entered Tokio Client Thread");
+        loop {
+            let mut buf = vec![0; 1024];
+            client_read_connection.read(&mut buf).await.unwrap();
+            if buf[0] == 0 {
+                eprintln!("Client Disconnected");
+                break;
             }
-            stream.write(&buf[..bytes_read])?;
-            // Print acceptance message
-            //read, print the message sent
-            println!("from the sender:{}", String::from_utf8_lossy(&buf));
-            // And you can sleep this connection with the connected sender
-            thread::sleep(time::Duration::from_secs(1));
+            let data = String::from_utf8(buf).expect("Found invalid UTF-8");
+            eprintln!("Data: {:?}", data);
         }
-        Ok(())
     }
 
-    pub fn init_server(self) -> Result<(), io::Error> {
-        // Getting a handle of the underlying thread.
-        let mut thread_vec: Vec<thread::JoinHandle<()>> = Vec::new();
+    async fn send_data_to_client(mut client_write_connection: OwnedWriteHalf, data: String) {
+        let future = client_write_connection.write_all(data.as_bytes());
+    }
 
-        // listen to incoming connections messages and bind them to a sever socket address.
-        for stream in self.connection.incoming() {
-            let stream = stream.expect("failed");
-            // let the receiver connect with the sender
-            let handle = thread::spawn(move || {
-                //receiver failed to read from the stream
-                Server::receive_data(stream).unwrap_or_else(|error| eprintln!("{:?}", error))
-            });
+    pub async fn initiate(&mut self) -> Result<(), Error> {
+        let (client_connection, _) = self.connection.accept().await?;
 
-            // Push messages in the order they are sent
-            thread_vec.push(handle);
-        }
+        eprintln!(
+            "Received connection from {:?}",
+            client_connection.peer_addr().unwrap()
+        );
 
-        for handle in thread_vec {
-            // return each single value Output contained in the heap
-            handle.join().unwrap();
-        }
+        let (read, write) = client_connection.into_split();
+
+        tokio::spawn(Server::read_data_from_client(read));
+        tokio::spawn(Server::send_data_to_client(
+            write,
+            "Received Data".to_string(),
+        ));
+
         Ok(())
     }
 }

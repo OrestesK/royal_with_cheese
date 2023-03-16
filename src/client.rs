@@ -1,6 +1,7 @@
-use std::io::{self, prelude::*, BufReader, Write};
-use std::net::TcpStream;
-use std::str;
+use std::io::Error;
+use tokio::io::BufReader;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 pub struct Client {
     pub address: String,
@@ -8,36 +9,38 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(ip: &str, port: &str) -> Result<Self, io::Error> {
-        let address = format!("{}:{}", ip, port);
-        let connection = TcpStream::connect(&address)?;
+    pub async fn new(ip: &str, port: &str) -> Result<Self, Error> {
+        let address = format!("{}:{}", ip, port); //formats address
+        let connection = TcpStream::connect(&address).await?; // connects to address
+        connection.set_nodelay(true)?; //disables Nagle's algorithm meaning data is sent instantly
+        eprintln!("Connected to: {}", address);
         Ok(Client {
             address,
             connection,
         })
     }
 
-    pub fn send_data(&mut self, data: String) -> Result<(), io::Error> {
-        // Write the message so that the receiver can access it
-        self.connection
-            .write(data.as_bytes())
-            .expect("failed to write");
+    pub async fn send_data(&mut self, data: String) -> Result<(), Error> {
+        // write
+        let result = self.connection.write_all(data.as_bytes()).await;
+        println!(
+            "Streamed {:?} || success={:?}",
+            data.as_bytes(),
+            result.is_ok()
+        );
 
-        Ok(())
-    }
-
-    pub fn read_data(&mut self) -> Result<(), io::Error> {
         //Add buffering so that the receiver can read messages from the stream
-        let mut reader = BufReader::new(&self.connection);
+        let mut reader = BufReader::new(&mut self.connection);
 
         // Check if this input message values are u8
         let mut buffer: Vec<u8> = Vec::new();
 
         // Read input information
-        reader.read_until(b'\n', &mut buffer)?;
+        let future = reader.read_until(b'\n', &mut buffer);
 
-        println!("read from server:{}", str::from_utf8(&buffer).unwrap());
-        println!("");
+        eprintln!("read from server: {:?}", buffer);
+        eprintln!("");
+
         Ok(())
     }
 }
