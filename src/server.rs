@@ -1,11 +1,13 @@
 use crate::shared::Action;
 
-use super::shared::Shared;
-use std::{io::Error, sync::Arc};
+use super::{board::Cell, shared::Shared};
+use std::{
+    io::Error,
+    sync::{Arc, Mutex},
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{tcp::OwnedReadHalf, tcp::OwnedWriteHalf, TcpListener},
-    sync::Mutex,
 };
 
 // struct Server
@@ -26,22 +28,27 @@ impl Server {
         })
     }
 
+    fn get_server_map(shared: Arc<Mutex<Shared>>) -> Vec<Vec<Cell>> {
+        let guard = shared.lock().expect("Failed");
+        let data = guard.map.clone();
+        std::mem::drop(guard);
+        data
+    }
+
     // sends data to client, runs constantly
     async fn write_data_to_client(
         shared: Arc<Mutex<Shared>>,
         mut client_write_connection: OwnedWriteHalf,
     ) {
+        //
+        // write
+        //
         eprintln!("Entered Tokio Write Client Thread");
-        let mut fps = fps_clock::FpsClock::new(60);
+        let mut fps = fps_clock::FpsClock::new(1);
         loop {
-            let shared = shared.lock().await;
-            let data = &shared.map;
-            client_write_connection
-                .write_all(b"temporary value")
-                .await
-                .expect("Failed to write to client");
-
-            //eprintln!("Sent: {:?}", data);
+            let map = Server::get_server_map(shared.clone());
+            _ = client_write_connection.write_all(b"map").await;
+            eprintln!("Sent: {:?}", b"map");
             fps.tick();
         }
     }
@@ -52,6 +59,9 @@ impl Server {
         mut client_read_connection: OwnedReadHalf,
         id: u8,
     ) {
+        //
+        // read
+        //
         eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(60);
         loop {
@@ -66,7 +76,7 @@ impl Server {
                 break;
             }
 
-            let mut shared = shared.lock().await;
+            let mut shared = shared.lock().expect("Failed");
             shared.actions.push_back(Action {
                 code: buf[0],
                 user: id,

@@ -4,8 +4,10 @@ use cursive::{
     vec::Vec2,
     Printer,
 };
-use std::sync::Mutex;
-use std::{io::Error, sync::Arc};
+use std::{
+    io::Error,
+    sync::{Arc, Mutex},
+};
 
 // SIZES BASED ON MY THINKPAD FULL SCREEN
 // TOO MUCH WORK TO MATCH RESOLUTIONS
@@ -27,7 +29,6 @@ pub struct Cell {
     pub coordinate: Point,
 }
 
-#[derive(Clone, Debug)]
 pub struct Board {
     pub shared: Arc<Mutex<Shared>>,
     pub board_number: u8,
@@ -41,9 +42,9 @@ pub struct MainBoard {
     pub boards: Vec<Board>,
 }
 
-pub fn initiate_cells(cells: Vec<Vec<Cell>>) {
+pub fn initiate_cells() -> Vec<Vec<Cell>> {
     let color_style = ColorStyle::new(BaseColor::White, BaseColor::White);
-    cells = Vec::<Vec<Cell>>::with_capacity(BOARD_HEIGHT);
+    let mut cells = Vec::<Vec<Cell>>::with_capacity(BOARD_HEIGHT);
     for i in 0u8..BOARD_HEIGHT as u8 {
         let mut cells_row = Vec::<Cell>::with_capacity(BOARD_WIDTH);
         for j in 0u8..BOARD_WIDTH as u8 {
@@ -55,6 +56,7 @@ pub fn initiate_cells(cells: Vec<Vec<Cell>>) {
         }
         cells.push(cells_row);
     }
+    cells
 }
 
 impl Board {
@@ -67,10 +69,10 @@ impl Board {
 }
 
 impl MainBoard {
-    pub fn new(shared: Vec<Arc<Mutex<Shared>>>, total_boards: u8) -> Result<Self, Error> {
+    pub fn new(shared: Arc<Mutex<Shared>>, total_boards: u8) -> Result<Self, Error> {
         let mut boards = Vec::<Board>::with_capacity(NUM_BOARDS as usize);
         for i in 0..NUM_BOARDS {
-            let board = Board::new(shared[i], i as u8).expect("Failed to initialize board");
+            let board = Board::new(shared.clone(), i as u8).expect("Failed to initialize board");
             boards.push(board);
         }
 
@@ -88,10 +90,10 @@ impl cursive::view::View for MainBoard {
     fn draw(&self, printer: &Printer) {
         for i in 0 as usize..BOARD_HEIGHT {
             for j in 0 as usize..BOARD_WIDTH {
-                let cell = self.boards[0].shared.lock();
+                let cell = self.boards[0].shared.lock().unwrap();
+                let cell = &cell.map[i][j];
 
                 printer.with_color(cell.color_style, |printer| {
-                    //eprint!("X: {:?} Y: {:?}", cell.coordinate.x, cell.coordinate.y);
                     printer.print(
                         (cell.coordinate.x as usize, cell.coordinate.y as usize),
                         EMPTY_CELL,

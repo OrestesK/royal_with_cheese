@@ -21,14 +21,8 @@ impl Shared {
     // creates Shared struct that will be used in Arc<Mutex<Shared>>
     // to be shared across threads (Arc) and across memory <Mutex>
     pub fn new() -> Result<Self, Error> {
-        // 1000 MAP AREA
-        let mut map = Vec::with_capacity(1000);
-        map.push(255); // TEST VALUE
-                       //
-        let mut map: Vec<Vec<Cell>>;
-        board::initiate_cells(map);
+        let map = board::initiate_cells();
 
-        // 100 players can make 4 moves at once?
         let actions = VecDeque::with_capacity(400);
 
         Ok(Shared { map, actions })

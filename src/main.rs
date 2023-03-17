@@ -1,11 +1,12 @@
 use fps_clock;
 use futures::executor::block_on;
 use royal_with_cheese::{client::Client, display, server::Server, shared::Shared};
-use std::env;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::{
+    env,
+    sync::{Arc, Mutex},
+};
 
-const ADDRESS: &str = "0.0.0.0"; //"localhost";
+const ADDRESS: &str = "0.0.0.0";
 const PORT: &str = "8080";
 
 #[tokio::main]
@@ -20,9 +21,9 @@ async fn main() {
 }
 
 async fn testing(shared: Arc<Mutex<Shared>>) {
-    //eprintln!("Stored Moves:");
+    eprintln!("Stored Moves:");
     let shared = Arc::clone(&shared);
-    let tt_shared = shared.lock().await;
+    let tt_shared = shared.lock().unwrap();
     let len = tt_shared.actions.len();
     for index in 0..len {
         let action = tt_shared.actions.get(index).unwrap();
@@ -35,15 +36,19 @@ fn server() {
     // builds server connection to socket
     let server: Server = block_on(Server::new(ADDRESS, PORT)).expect("Failed to create server");
 
-    // initiates reading and writing from clients
-    let shared = Shared::new().expect("Failed to initialize Shared");
+    // creates shared 'Shared' data
+    let shared = Shared::new().unwrap();
     let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
 
+    // makes copies of shared to pass to threads
     let temp_shared_server = Arc::clone(&shared);
-    let temp_shared_gui = Arc::clone(&shared);
+    //let temp_shared_gui = Arc::clone(&shared);
+
+    // initializes reading and writing from clients
     tokio::spawn(Server::initiate(server, temp_shared_server));
 
-    tokio::spawn(display::cursive(tmp_shared_gui));
+    // initializes GUI
+    //tokio::spawn(display::cursive(temp_shared_gui));
 
     // loop so program does not end
     let mut fps = fps_clock::FpsClock::new(1);
@@ -60,18 +65,15 @@ fn client() {
     let client: Client =
         block_on(Client::new(ADDRESS, PORT)).expect("Failed to connect to address");
 
-    // initiates reading from server and returns a write connection
-    let mut write_to_server_connection =
-        block_on(Client::initiate(client)).expect("Failed to initialize client");
+    // initializes reading from server and returns a write connection
+    let (read, mut write) = client.connection.into_split();
+    tokio::spawn(Client::read_data_from_server(read));
 
     // main loop
     loop {
         let input = display::terminal_input();
-        block_on(Client::write_data_to_server(
-            &mut write_to_server_connection,
-            input,
-        ))
-        .expect("Failed to send data to server");
+        block_on(Client::write_data_to_server(&mut write, input))
+            .expect("Failed to send data to server");
     }
     //cursive();
 }
