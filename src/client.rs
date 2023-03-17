@@ -1,14 +1,16 @@
 use std::io::Error;
-use tokio::io::BufReader;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 
+// struct Client
 pub struct Client {
     pub address: String,
     pub connection: TcpStream,
 }
 
 impl Client {
+    // creates Client connection
     pub async fn new(ip: &str, port: &str) -> Result<Self, Error> {
         let address = format!("{}:{}", ip, port); //formats address
         let connection = TcpStream::connect(&address).await?; // connects to address
@@ -20,27 +22,51 @@ impl Client {
         })
     }
 
-    pub async fn send_data(&mut self, data: String) -> Result<(), Error> {
+    pub async fn write_data_to_server(
+        write_to_server_connection: &mut OwnedWriteHalf,
+        data: String,
+    ) -> Result<(), Error> {
+        //
         // write
-        let result = self.connection.write_all(data.as_bytes()).await;
-        println!(
-            "Streamed {:?} || success={:?}",
-            data.as_bytes(),
-            result.is_ok()
-        );
-
-        //Add buffering so that the receiver can read messages from the stream
-        let mut reader = BufReader::new(&mut self.connection);
-
-        // Check if this input message values are u8
-        let mut buffer: Vec<u8> = Vec::new();
-
-        // Read input information
-        let _future = reader.read_until(b'\n', &mut buffer);
-
-        eprintln!("read from server: {:?}", buffer);
-        eprintln!("");
+        //
+        write_to_server_connection
+            .write_all(data.as_bytes())
+            .await?;
+        println!("Streamed to server: {:?}", data.as_bytes(),);
 
         Ok(())
+    }
+
+    pub async fn read_data_from_server(
+        mut server_read_connection: OwnedReadHalf,
+    ) -> Result<(), Error> {
+        //
+        // read
+        //
+        eprintln!("Entered Tokio Read Client Thread");
+        loop {
+            let mut buf = vec![0; 20];
+            server_read_connection
+                .read(&mut buf)
+                .await
+                .expect("Failed to read from server");
+            if buf[0] == 0 {
+                eprintln!("Client Disconnected");
+                break;
+            }
+            if buf[0] == 122 {
+                eprint!("Got z\n")
+            }
+            let data = String::from_utf8(buf).expect("Found invalid UTF-8");
+            eprintln!("Received: {:?}", data);
+        }
+        Ok(())
+    }
+
+    pub async fn initiate(self) -> Result<OwnedWriteHalf, Error> {
+        let (read, write) = self.connection.into_split();
+        tokio::spawn(Client::read_data_from_server(read));
+
+        Ok(write)
     }
 }
