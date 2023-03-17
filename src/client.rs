@@ -1,7 +1,11 @@
 use std::io::Error;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpStream,
+    },
+};
 
 // struct Client
 pub struct Client {
@@ -44,7 +48,7 @@ impl Client {
         eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(1);
         loop {
-            let mut buf = vec![0; 20];
+            let mut buf = vec![0; 3];
             eprintln!("before wait");
             server_read_connection
                 .read(&mut buf)

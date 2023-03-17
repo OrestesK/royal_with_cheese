@@ -1,17 +1,12 @@
-use cursive::views::{Dialog, TextView};
-
 use fps_clock;
 use futures::executor::block_on;
-use royal_with_cheese::client::Client;
-use royal_with_cheese::server::Server;
-use royal_with_cheese::shared::Shared;
+use royal_with_cheese::{client::Client, display, server::Server, shared::Shared};
 use std::env;
-use std::io;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-const ADDRESS: &str = "localhost";
-const PORT: &str = "7878";
+const ADDRESS: &str = "0.0.0.0"; //"localhost";
+const PORT: &str = "8080";
 
 #[tokio::main]
 async fn main() {
@@ -25,12 +20,14 @@ async fn main() {
 }
 
 async fn testing(shared: Arc<Mutex<Shared>>) {
-    eprintln!("IN TESTING");
+    //eprintln!("Stored Moves:");
     let shared = Arc::clone(&shared);
-    let mut tt_shared = shared.lock().await;
-    let map = &mut tt_shared.map;
-    eprintln!("{:?}", *map);
-    map.push(2);
+    let tt_shared = shared.lock().await;
+    let len = tt_shared.actions.len();
+    for index in 0..len {
+        let action = tt_shared.actions.get(index).unwrap();
+        eprintln!("User: {:?} || Move: {:?}", action.user, action.code);
+    }
 }
 
 // server side
@@ -42,28 +39,23 @@ fn server() {
     let shared = Shared::new().expect("Failed to initialize Shared");
     let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
 
-    let temp_shared = Arc::clone(&shared);
-    tokio::spawn(Server::initiate(server, temp_shared));
+    let temp_shared_server = Arc::clone(&shared);
+    let temp_shared_gui = Arc::clone(&shared);
+    tokio::spawn(Server::initiate(server, temp_shared_server));
+
+    tokio::spawn(display::cursive(tmp_shared_gui));
 
     // loop so program does not end
-    let mut i: u128 = 0;
     let mut fps = fps_clock::FpsClock::new(1);
     loop {
-        //eprintln!("{:?}", i);
-        if i == 500000000 {
-            //let tt_shared = shared.clone();
-            //tokio::spawn(testing(tt_shared));
-            i = 99999999;
-        }
-        i += 1;
+        let tt_shared = shared.clone();
+        tokio::spawn(testing(tt_shared));
         fps.tick();
     }
 }
 
 // client side
 fn client() {
-    //cursive();
-
     // builds client connection to server
     let client: Client =
         block_on(Client::new(ADDRESS, PORT)).expect("Failed to connect to address");
@@ -74,32 +66,12 @@ fn client() {
 
     // main loop
     loop {
-        let input = terminal_input();
+        let input = display::terminal_input();
         block_on(Client::write_data_to_server(
             &mut write_to_server_connection,
             input,
         ))
         .expect("Failed to send data to server");
     }
-}
-
-// TEMPORARY FOR TESTING
-fn terminal_input() -> String {
-    let mut input = String::new();
-
-    io::stdin().read_line(&mut input).expect("Failed to read");
-
-    input
-}
-
-// GUI
-fn cursive() {
-    let mut siv = cursive::default();
-
-    siv.add_layer(
-        Dialog::around(TextView::new("Hello Dialog!"))
-            .title("Cursive")
-            .button("Quit", |s| s.quit()),
-    );
-    //siv.run();
+    //cursive();
 }
