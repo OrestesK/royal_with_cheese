@@ -1,5 +1,6 @@
 use cursive::views::{Dialog, TextView};
 
+use fps_clock;
 use futures::executor::block_on;
 use royal_with_cheese::client::Client;
 use royal_with_cheese::server::Server;
@@ -28,8 +29,8 @@ async fn testing(shared: Arc<Mutex<Shared>>) {
     let shared = Arc::clone(&shared);
     let mut tt_shared = shared.lock().await;
     let map = &mut tt_shared.map;
-    //eprintln!("{:?}", *map);
-    //map.push(2);
+    eprintln!("{:?}", *map);
+    map.push(2);
 }
 
 // server side
@@ -46,13 +47,16 @@ fn server() {
 
     // loop so program does not end
     let mut i: u128 = 0;
+    let mut fps = fps_clock::FpsClock::new(1);
     loop {
+        //eprintln!("{:?}", i);
         if i == 500000000 {
-            let tt_shared = shared.clone();
-            tokio::spawn(testing(tt_shared));
+            //let tt_shared = shared.clone();
+            //tokio::spawn(testing(tt_shared));
             i = 99999999;
         }
         i += 1;
+        fps.tick();
     }
 }
 

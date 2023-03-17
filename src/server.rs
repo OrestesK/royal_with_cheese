@@ -31,21 +31,24 @@ impl Server {
         mut client_write_connection: OwnedWriteHalf,
     ) {
         eprintln!("Entered Tokio Write Client Thread");
+        let mut fps = fps_clock::FpsClock::new(1);
         loop {
             let shared = shared.lock().await;
             let data = &shared.map;
-            let _future = client_write_connection.write_all(data.as_slice());
-            /*
-            if data.len() == 2 && data[1] == 2 {
-                eprintln!("Sent: {:?}", data);
-            }
-            */
+            client_write_connection
+                .write_all(data.as_slice())
+                .await
+                .expect("Failed to write to client");
+            eprintln!("Sent: {:?}", data);
+
+            fps.tick();
         }
     }
 
     // reads data from server, runs constantly
     async fn read_data_from_client(mut client_read_connection: OwnedReadHalf) {
         eprintln!("Entered Tokio Read Client Thread");
+        let mut fps = fps_clock::FpsClock::new(60);
         loop {
             let mut buf = vec![0; 20];
             client_read_connection
@@ -61,6 +64,7 @@ impl Server {
             }
             let data = String::from_utf8(buf).expect("Found invalid UTF-8");
             eprintln!("Received: {:?}", data);
+            fps.tick();
         }
     }
 

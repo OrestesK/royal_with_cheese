@@ -37,30 +37,23 @@ impl Client {
         Ok(())
     }
 
-    pub async fn read_data_from_server(
-        mut server_read_connection: OwnedReadHalf,
-    ) -> Result<(), Error> {
+    async fn read_data_from_server(mut server_read_connection: OwnedReadHalf) -> Result<(), Error> {
         //
         // read
         //
         eprintln!("Entered Tokio Read Client Thread");
+        let mut fps = fps_clock::FpsClock::new(1);
         loop {
             let mut buf = vec![0; 20];
+            eprintln!("before wait");
             server_read_connection
                 .read(&mut buf)
                 .await
                 .expect("Failed to read from server");
-            if buf[0] == 0 {
-                eprintln!("Client Disconnected");
-                break;
-            }
-            if buf[0] == 122 {
-                eprint!("Got z\n")
-            }
-            let data = String::from_utf8(buf).expect("Found invalid UTF-8");
-            eprintln!("Received: {:?}", data);
+            eprintln!("after wait");
+            eprintln!("Received: {:?}", buf);
+            fps.tick();
         }
-        Ok(())
     }
 
     pub async fn initiate(self) -> Result<OwnedWriteHalf, Error> {
