@@ -1,4 +1,11 @@
-use std::io::Error;
+use std::{
+    io::Error,
+    sync::{Arc, Mutex},
+};
+
+use crate::shared_io;
+
+use super::shared::Shared;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
@@ -28,40 +35,43 @@ impl Client {
 
     pub async fn write_data_to_server(
         write_to_server_connection: &mut OwnedWriteHalf,
-        data: String,
-    ) -> Result<(), Error> {
+        data: Vec<u8>,
+    ) {
         //
         // write
         //
         write_to_server_connection
-            .write_all(data.as_bytes())
-            .await?;
-        println!("Streamed to server: {:?}", data.as_bytes(),);
-
-        Ok(())
+            .write(data.as_slice())
+            .await
+            .expect("Failed to write");
+        println!("Streamed to server: {:?}", data.as_slice(),);
     }
 
-    pub async fn read_data_from_server(mut read_from_server_connection: OwnedReadHalf) {
+    pub async fn read_data_from_server(
+        shared: Arc<Mutex<Shared>>,
+        mut read_from_server_connection: OwnedReadHalf,
+    ) {
         //
         // read
         //
         eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(60);
         loop {
-            let mut buf = vec![0; 3];
-            eprintln!("up to here");
+            // let mut buf = vec![0; 100 * 100 * 3];
+            let mut buf = vec![0; 9];
             read_from_server_connection
                 .read(&mut buf)
                 .await
                 .expect("Failed to read from server");
 
-            eprintln!(" to here");
             eprintln!("Received: {:?}", buf);
 
             if buf[0] == 0 {
                 eprintln!("Server Disconnected");
                 break;
             }
+
+            tokio::spawn(shared_io::data_to_active_tiles(shared.clone(), buf));
 
             fps.tick();
         }

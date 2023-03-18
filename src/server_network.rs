@@ -1,6 +1,5 @@
-use crate::shared::Action;
-
-use super::{board::Cell, shared::Shared};
+use super::shared::Shared;
+use super::{shared::Action, shared_io};
 use std::{
     io::Error,
     sync::{Arc, Mutex},
@@ -28,13 +27,6 @@ impl Server {
         })
     }
 
-    fn get_server_map(shared: Arc<Mutex<Shared>>) -> Vec<Vec<Cell>> {
-        let guard = shared.lock().expect("Failed");
-        let data = guard.map.clone();
-        std::mem::drop(guard);
-        data
-    }
-
     // sends data to client, runs constantly
     async fn write_data_to_client(
         shared: Arc<Mutex<Shared>>,
@@ -46,9 +38,12 @@ impl Server {
         eprintln!("Entered Tokio Write Client Thread");
         let mut fps = fps_clock::FpsClock::new(1);
         loop {
-            let map = Server::get_server_map(shared.clone());
-            _ = client_write_connection.write_all(b"map").await;
-            eprintln!("Sent: {:?}", b"map");
+            let data_to_send = shared_io::active_tiles_to_data(shared.clone());
+
+            _ = client_write_connection
+                .write_all(data_to_send.as_slice())
+                .await;
+            eprintln!("Sent: {:?}", data_to_send.as_slice());
             fps.tick();
         }
     }
@@ -65,7 +60,7 @@ impl Server {
         eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(60);
         loop {
-            let mut buf = vec![0; 3];
+            let mut buf = vec![0; 2]; //CHANGE TO 1 AFTER TESTING
             client_read_connection
                 .read(&mut buf)
                 .await
@@ -76,25 +71,33 @@ impl Server {
                 break;
             }
 
-            let mut shared = shared.lock().expect("Failed");
-            shared.actions.push_back(Action {
-                code: buf[0],
-                user: id,
-            });
+            // adds action
+            shared_io::add_action(
+                shared.clone(),
+                Action {
+                    user: id,
+                    code: buf[0],
+                },
+            );
+
+            // updates active tiles
+            tokio::spawn(shared_io::update_active_tiles(shared.clone()));
 
             eprintln!("Received: {:?} from Client {:?}", buf, id);
             fps.tick();
         }
     }
 
-    // initiates sending and reading
-    pub async fn initiate(self, shared: Arc<Mutex<Shared>>) -> Result<(), Error> {
+    // initiates reading and writing
+    pub async fn initialize_server(self, shared: Arc<Mutex<Shared>>) {
         let mut id: u8 = 0;
         loop {
             id += 1;
-            let (client_connection, _) = self.connection.accept().await?;
-            let shared_copy_read = shared.clone();
-            let shared_copy_write = shared.clone();
+            let (client_connection, _) = self
+                .connection
+                .accept()
+                .await
+                .expect("Failed to accept connection");
 
             eprintln!(
                 "Received connection from {:?}",
@@ -104,8 +107,8 @@ impl Server {
             // splits connection into read and write connections
             let (read, write) = client_connection.into_split();
 
-            tokio::spawn(Server::read_data_from_client(shared_copy_read, read, id));
-            tokio::spawn(Server::write_data_to_client(shared_copy_write, write));
+            tokio::spawn(Server::read_data_from_client(shared.clone(), read, id));
+            tokio::spawn(Server::write_data_to_client(shared.clone(), write));
         }
     }
 }

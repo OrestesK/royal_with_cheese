@@ -1,6 +1,6 @@
 use fps_clock;
 use futures::executor::block_on;
-use royal_with_cheese::{client::Client, display, server::Server, shared::Shared};
+use royal_with_cheese::{client_network::Client, display, server_network::Server, shared::Shared};
 use std::{
     env,
     sync::{Arc, Mutex},
@@ -40,21 +40,17 @@ fn server() {
     let shared = Shared::new().unwrap();
     let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
 
-    // makes copies of shared to pass to threads
-    let temp_shared_server = Arc::clone(&shared);
-    //let temp_shared_gui = Arc::clone(&shared);
-
-    // initializes reading and writing from clients
-    tokio::spawn(Server::initiate(server, temp_shared_server));
+    // initializes reading and writing from clients (loop)
+    tokio::spawn(Server::initialize_server(server, shared.clone()));
 
     // initializes GUI
-    //tokio::spawn(display::cursive(temp_shared_gui));
+    tokio::spawn(display::cursive(shared.clone()));
 
     // loop so program does not end
     let mut fps = fps_clock::FpsClock::new(1);
     loop {
-        let tt_shared = shared.clone();
-        tokio::spawn(testing(tt_shared));
+        //let tt_shared = shared.clone();
+        //tokio::spawn(testing(tt_shared));
         fps.tick();
     }
 }
@@ -65,15 +61,19 @@ fn client() {
     let client: Client =
         block_on(Client::new(ADDRESS, PORT)).expect("Failed to connect to address");
 
-    // initializes reading from server and returns a write connection
+    // creates shared 'Shared' data
+    let shared = Shared::new().unwrap();
+    let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
+
     let (read, mut write) = client.connection.into_split();
-    tokio::spawn(Client::read_data_from_server(read));
+
+    // initializes reading data from server (loop)
+    tokio::spawn(Client::read_data_from_server(shared.clone(), read));
 
     // main loop
     loop {
         let input = display::terminal_input();
-        block_on(Client::write_data_to_server(&mut write, input))
-            .expect("Failed to send data to server");
+        block_on(Client::write_data_to_server(&mut write, input));
     }
     //cursive();
 }
