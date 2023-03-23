@@ -52,7 +52,7 @@ impl MainBoard {
 fn print_background(main_board: &MainBoard, printer: &Printer) {
     for i in 0 as usize..BOARD_WIDTH {
         for j in 0 as usize..BOARD_HEIGHT {
-            printer.with_color(main_board.background_style, |printer| {
+            printer.with_style(main_board.background_style, |printer| {
                 printer.print((i, j), EMPTY_CELL)
             })
         }
@@ -61,24 +61,32 @@ fn print_background(main_board: &MainBoard, printer: &Printer) {
 
 impl cursive::view::View for MainBoard {
     fn draw(&self, printer: &Printer) {
-        print_background(self, printer);
+        //print_background(self, printer);
 
         let cell = self.boards[0].shared.lock().unwrap();
         let size = cell.active_tiles.len();
-        drop(cell);
+        //drop(cell);
+
+        printer.with_color(self.player_style, |printer| {
+            printer.print(
+                (20 as usize, 20 as usize),
+                &(cell.actions.len().to_string()),
+            );
+        });
+        //printer.print((20, 20), "HELLO");
+        /*
         for i in 0 as usize..size {
             let cell = self.boards[0].shared.lock().unwrap();
             let cell = &cell.active_tiles[i];
 
-            printer.print((i + 20, i + 20), "HELLO");
-
-            printer.with_color(self.player_style, |printer| {
-                printer.print(
-                    (cell.coordinate.x as usize, cell.coordinate.y as usize),
-                    EMPTY_CELL,
-                )
-            })
+            // printer.with_color(self.player_style, |printer| {
+            //     printer.print(
+            //         (cell.coordinate.x as usize, cell.coordinate.y as usize),
+            //         EMPTY_CELL,
+            //     )
+            // })
         }
+        */
     }
     fn required_size(&mut self, _: Vec2) -> Vec2 {
         Vec2::new(BOARD_WIDTH, BOARD_HEIGHT)

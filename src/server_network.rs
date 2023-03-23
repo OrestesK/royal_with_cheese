@@ -20,7 +20,7 @@ impl Server {
     pub async fn new(ip: &str, port: &str) -> Result<Self, Error> {
         let address = format!("{}:{}", ip, port); //formats address
         let connection = TcpListener::bind(&address).await?; // binds server to address
-        eprintln!("Listening on: {}", address);
+                                                             //eprintln!("Listening on: {}", address);
         Ok(Server {
             address,
             connection,
@@ -35,7 +35,7 @@ impl Server {
         //
         // write
         //
-        eprintln!("Entered Tokio Write Client Thread");
+        //eprintln!("Entered Tokio Write Client Thread");
         let mut fps = fps_clock::FpsClock::new(1);
         loop {
             let data_to_send = shared_io::active_tiles_to_data(shared.clone());
@@ -43,7 +43,7 @@ impl Server {
             _ = client_write_connection
                 .write_all(data_to_send.as_slice())
                 .await;
-            eprintln!("Sent: {:?}", data_to_send.as_slice());
+            //eprintln!("Sent: {:?}", data_to_send.as_slice());
             fps.tick();
         }
     }
@@ -57,7 +57,7 @@ impl Server {
         //
         // read
         //
-        eprintln!("Entered Tokio Read Client Thread");
+        // eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(60);
         loop {
             let mut buf = vec![0; 2]; //CHANGE TO 1 AFTER TESTING
@@ -83,7 +83,7 @@ impl Server {
             // updates active tiles
             tokio::spawn(shared_io::update_active_tiles(shared.clone()));
 
-            eprintln!("Received: {:?} from Client {:?}", buf, id);
+            // eprintln!("Received: {:?} from Client {:?}", buf, id);
             fps.tick();
         }
     }
@@ -99,10 +99,10 @@ impl Server {
                 .await
                 .expect("Failed to accept connection");
 
-            eprintln!(
-                "Received connection from {:?}",
-                client_connection.peer_addr().unwrap()
-            );
+            // eprintln!(
+            //     "Received connection from {:?}",
+            //     client_connection.peer_addr().unwrap()
+            // );
 
             // splits connection into read and write connections
             let (read, write) = client_connection.into_split();
