@@ -1,5 +1,6 @@
-use fps_clock;
 use futures::executor::block_on;
+use royal_with_cheese::shared::Action;
+use royal_with_cheese::shared_io;
 use royal_with_cheese::{client_network::Client, display, server_network::Server, shared::Shared};
 use std::{
     env,
@@ -20,17 +21,6 @@ async fn main() {
     }
 }
 
-async fn testing(shared: Arc<Mutex<Shared>>) {
-    eprintln!("Stored Moves:");
-    let shared = Arc::clone(&shared);
-    let tt_shared = shared.lock().unwrap();
-    let len = tt_shared.actions.len();
-    for index in 0..len {
-        let action = tt_shared.actions.get(index).unwrap();
-        eprintln!("User: {:?} || Move: {:?}", action.user, action.code);
-    }
-}
-
 // server side
 fn server() {
     // builds server connection to socket
@@ -40,19 +30,12 @@ fn server() {
     let shared = Shared::new().unwrap();
     let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
 
-    // initializes reading and writing from clients (loop)
+    // initializes reading and writing from clients
     tokio::spawn(Server::initialize_server(server, shared.clone()));
 
-    // initializes GUI
-    tokio::spawn(display::cursive(shared.clone()));
-
-    // loop so program does not end
-    let mut fps = fps_clock::FpsClock::new(1);
-    loop {
-        //let tt_shared = shared.clone();
-        //tokio::spawn(testing(tt_shared));
-        fps.tick();
-    }
+    // initializes and runs GUI
+    display::cursive(shared.clone(), false);
+    loop {}
 }
 
 // client side
@@ -65,15 +48,6 @@ fn client() {
     let shared = Shared::new().unwrap();
     let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
 
-    let (read, mut write) = client.connection.into_split();
-
-    // initializes reading data from server (loop)
-    tokio::spawn(Client::read_data_from_server(shared.clone(), read));
-
-    // main loop
-    loop {
-        let input = display::terminal_input();
-        block_on(Client::write_data_to_server(&mut write, input));
-    }
-    //cursive();
+    block_on(Client::initialize_client(client, shared.clone()));
+    display::cursive(shared.clone(), true);
 }

@@ -1,8 +1,10 @@
 use super::{
     board::{Board, MainBoard, BOARD_HEIGHT, BOARD_WIDTH, EMPTY_CELL, NUM_BOARDS, PLAYER_NUM},
+    shared::Action,
     shared::Shared,
     shared_io,
 };
+use cursive::{event::Event, event::EventResult, event::Key, Cursive};
 use cursive::{
     theme::{BaseColor, ColorStyle},
     vec::Vec2,
@@ -14,8 +16,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
+    shared_io::add_action(
+        shared.clone(),
+        Action {
+            user: 0,
+            code: data,
+        },
+    );
+}
+
 // GUI
-pub async fn cursive(shared: Arc<Mutex<Shared>>) {
+pub fn cursive(shared: Arc<Mutex<Shared>>, client: bool) {
     let mut siv = cursive::default();
     siv.add_global_callback('q', |s| s.quit());
 
@@ -70,16 +82,6 @@ impl cursive::view::View for MainBoard {
         //print_background(self, printer);
 
         let active_tiles = shared_io::get_server_active_tiles(self.boards[0].shared.clone());
-        // eprintln!("HELLO {:?}", active_tiles.len());
-
-        /*
-        printer.with_color(self.player_style, |printer| {
-            printer.print(
-                (20 as usize, 20 as usize),
-                &(cell.actions.len().to_string()),
-            );
-        });
-        */
 
         for i in 0 as usize..active_tiles.len() {
             let cell = active_tiles.get(i).unwrap();
@@ -92,7 +94,18 @@ impl cursive::view::View for MainBoard {
             })
         }
     }
+
     fn required_size(&mut self, _: Vec2) -> Vec2 {
         Vec2::new(BOARD_WIDTH, BOARD_HEIGHT)
+    }
+
+    fn on_event(&mut self, event: Event) -> EventResult {
+        match event {
+            Event::Key(Key::Enter) => {
+                send_key_input(self.boards.get(0).unwrap().shared.clone(), 97)
+            }
+            _ => return EventResult::Ignored,
+        }
+        EventResult::Ignored
     }
 }

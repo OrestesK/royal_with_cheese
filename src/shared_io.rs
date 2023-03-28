@@ -32,7 +32,7 @@ pub async fn update_active_tiles(shared: Arc<Mutex<Shared>>) {
         cell_type: 1,
         coordinate: Vec2 {
             x: actions.pop_front().unwrap().code as usize - 60,
-            y: 9,
+            y: 20,
         },
     });
 

@@ -34,17 +34,25 @@ impl Client {
     }
 
     pub async fn write_data_to_server(
-        write_to_server_connection: &mut OwnedWriteHalf,
-        data: Vec<u8>,
+        shared: Arc<Mutex<Shared>>,
+        mut write_to_server_connection: OwnedWriteHalf,
     ) {
         //
         // write
         //
-        write_to_server_connection
-            .write(data.as_slice())
-            .await
-            .expect("Failed to write");
-        println!("Streamed to server: {:?}", data.as_slice(),);
+        loop {
+            let actions = shared_io::get_and_clear_server_actions(shared.clone());
+            for i in 0..actions.len() {
+                eprintln!("{:?}", actions);
+                let code = actions.get(i).unwrap().code;
+                let data = vec![code];
+                write_to_server_connection
+                    .write(data.as_slice())
+                    .await
+                    .expect("Failed to write");
+                println!("Streamed to server: {:?}", data.as_slice());
+            }
+        }
     }
 
     pub async fn read_data_from_server(
@@ -75,5 +83,14 @@ impl Client {
 
             fps.tick();
         }
+    }
+
+    pub async fn initialize_client(self, shared: Arc<Mutex<Shared>>) {
+        // splits connection into read and write connections
+        let (read, write) = self.connection.into_split();
+
+        // initializes reading data from server
+        tokio::spawn(Client::read_data_from_server(shared.clone(), read));
+        tokio::spawn(Client::write_data_to_server(shared.clone(), write));
     }
 }
