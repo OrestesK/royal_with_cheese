@@ -20,7 +20,7 @@ impl Server {
     pub async fn new(ip: &str, port: &str) -> Result<Self, Error> {
         let address = format!("{}:{}", ip, port); //formats address
         let connection = TcpListener::bind(&address).await?; // binds server to address
-                                                             //eprintln!("Listening on: {}", address);
+                                                             // eprintln!("Listening on: {}", address);
         Ok(Server {
             address,
             connection,
@@ -43,7 +43,7 @@ impl Server {
             _ = client_write_connection
                 .write_all(data_to_send.as_slice())
                 .await;
-            //eprintln!("Sent: {:?}", data_to_send.as_slice());
+            // eprintln!("Sent: {:?}", data_to_send.as_slice());
             fps.tick();
         }
     }
@@ -60,14 +60,14 @@ impl Server {
         // eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(60);
         loop {
-            let mut buf = vec![0; 2]; //CHANGE TO 1 AFTER TESTING
+            let mut buf = vec![0; 1]; //CHANGE TO 1 AFTER TESTING
             client_read_connection
                 .read(&mut buf)
                 .await
                 .expect("Failed to read from client");
 
             if buf[0] == 0 {
-                eprintln!("Client Disconnected");
+                // eprintln!("Client Disconnected");
                 break;
             }
 

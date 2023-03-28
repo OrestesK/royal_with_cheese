@@ -1,21 +1,27 @@
-use super::board::{
-    Board, MainBoard, BOARD_HEIGHT, BOARD_WIDTH, EMPTY_CELL, NUM_BOARDS, PLAYER_NUM,
+use super::{
+    board::{Board, MainBoard, BOARD_HEIGHT, BOARD_WIDTH, EMPTY_CELL, NUM_BOARDS, PLAYER_NUM},
+    shared::Shared,
+    shared_io,
 };
-use super::shared::Shared;
-use cursive::theme::{BaseColor, ColorStyle};
-use cursive::vec::Vec2;
-use cursive::views::Panel;
-use cursive::Printer;
-use std::io;
-use std::sync::{Arc, Mutex};
+use cursive::{
+    theme::{BaseColor, ColorStyle},
+    vec::Vec2,
+    views::Panel,
+    Printer,
+};
+use std::{
+    io,
+    sync::{Arc, Mutex},
+};
 
 // GUI
 pub async fn cursive(shared: Arc<Mutex<Shared>>) {
-    let mut siv = cursive::ncurses();
+    let mut siv = cursive::default();
     siv.add_global_callback('q', |s| s.quit());
 
-    let main_board = MainBoard::new(shared, 9);
+    let main_board = MainBoard::new(shared, NUM_BOARDS as u8);
     siv.add_fullscreen_layer(Panel::new(main_board));
+    siv.set_autorefresh(true);
     siv.run();
 }
 
@@ -23,7 +29,7 @@ pub async fn cursive(shared: Arc<Mutex<Shared>>) {
 pub fn terminal_input() -> Vec<u8> {
     let mut input = String::new();
     io::stdin().read_line(&mut input).unwrap();
-    input.into_bytes()
+    input.get(..1).unwrap().to_string().into_bytes()
 }
 
 impl MainBoard {
@@ -52,7 +58,7 @@ impl MainBoard {
 fn print_background(main_board: &MainBoard, printer: &Printer) {
     for i in 0 as usize..BOARD_WIDTH {
         for j in 0 as usize..BOARD_HEIGHT {
-            printer.with_style(main_board.background_style, |printer| {
+            printer.with_style(main_board.player_style, |printer| {
                 printer.print((i, j), EMPTY_CELL)
             })
         }
@@ -63,30 +69,28 @@ impl cursive::view::View for MainBoard {
     fn draw(&self, printer: &Printer) {
         //print_background(self, printer);
 
-        let cell = self.boards[0].shared.lock().unwrap();
-        let size = cell.active_tiles.len();
-        //drop(cell);
+        let active_tiles = shared_io::get_server_active_tiles(self.boards[0].shared.clone());
+        // eprintln!("HELLO {:?}", active_tiles.len());
 
+        /*
         printer.with_color(self.player_style, |printer| {
             printer.print(
                 (20 as usize, 20 as usize),
                 &(cell.actions.len().to_string()),
             );
         });
-        //printer.print((20, 20), "HELLO");
-        /*
-        for i in 0 as usize..size {
-            let cell = self.boards[0].shared.lock().unwrap();
-            let cell = &cell.active_tiles[i];
-
-            // printer.with_color(self.player_style, |printer| {
-            //     printer.print(
-            //         (cell.coordinate.x as usize, cell.coordinate.y as usize),
-            //         EMPTY_CELL,
-            //     )
-            // })
-        }
         */
+
+        for i in 0 as usize..active_tiles.len() {
+            let cell = active_tiles.get(i).unwrap();
+
+            printer.with_color(self.player_style, |printer| {
+                printer.print(
+                    (cell.coordinate.x as usize, cell.coordinate.y as usize),
+                    EMPTY_CELL,
+                )
+            })
+        }
     }
     fn required_size(&mut self, _: Vec2) -> Vec2 {
         Vec2::new(BOARD_WIDTH, BOARD_HEIGHT)

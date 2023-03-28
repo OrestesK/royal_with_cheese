@@ -28,12 +28,13 @@ pub async fn update_active_tiles(shared: Arc<Mutex<Shared>>) {
     let mut actions = get_and_clear_server_actions(shared.clone());
     let mut active_tiles = get_server_active_tiles(shared.clone());
 
-    if actions.pop_front().unwrap().code == 97 {
-        active_tiles.push(Cell {
-            cell_type: 1,
-            coordinate: Vec2 { x: 6, y: 9 },
-        });
-    }
+    active_tiles.push(Cell {
+        cell_type: 1,
+        coordinate: Vec2 {
+            x: actions.pop_front().unwrap().code as usize - 60,
+            y: 9,
+        },
+    });
 
     let mut final_actions = shared.lock().unwrap();
     final_actions.active_tiles = active_tiles;
