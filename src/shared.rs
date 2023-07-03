@@ -1,6 +1,12 @@
 use super::board::Cell;
 use std::{collections::VecDeque, io::Error};
 
+// creates debugging macro
+#[macro_export]
+macro_rules! dprint {
+    ($($arg:tt)*) => (if true { ::std::eprintln!($($arg)*); })
+}
+ 
 // struct Action
 #[derive(Clone, Debug)]
 pub struct Action {

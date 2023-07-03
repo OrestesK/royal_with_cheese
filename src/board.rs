@@ -10,7 +10,7 @@ pub const EMPTY_CELL: &str = " ";
 // SIZES BASED ON MY THINKPAD FULL SCREEN
 // TOO MUCH WORK TO MATCH RESOLUTIONS
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Cell {
     pub cell_type: u8,
     pub coordinate: Vec2,
@@ -29,6 +29,7 @@ pub struct MainBoard {
     pub background_style: ColorStyle,
     pub player_style: ColorStyle,
     pub boards: Vec<Board>,
+    pub is_client: bool,
 }
 
 impl Board {

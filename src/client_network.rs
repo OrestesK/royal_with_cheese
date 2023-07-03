@@ -2,10 +2,8 @@ use std::{
     io::Error,
     sync::{Arc, Mutex},
 };
-
-use crate::shared_io;
-
-use super::shared::Shared;
+use crate::shared_io::{self, data_to_active_tiles};
+use super::{shared::Shared, dprint};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
@@ -13,6 +11,8 @@ use tokio::{
         TcpStream,
     },
 };
+
+const FPS: u32  = 10;
 
 // struct Client
 pub struct Client {
@@ -26,7 +26,9 @@ impl Client {
         let address = format!("{}:{}", ip, port); //formats address
         let connection = TcpStream::connect(&address).await?; // connects to address
         connection.set_nodelay(true)?; //disables Nagle's algorithm meaning data is sent instantly
-        eprintln!("Connected to: {}", address);
+        
+        dprint!("Connected to: {}", address);
+        
         Ok(Client {
             address,
             connection,
@@ -43,14 +45,14 @@ impl Client {
         loop {
             let actions = shared_io::get_and_clear_server_actions(shared.clone());
             for i in 0..actions.len() {
-                eprintln!("{:?}", actions);
                 let code = actions.get(i).unwrap().code;
                 let data = vec![code];
                 write_to_server_connection
                     .write(data.as_slice())
                     .await
                     .expect("Failed to write");
-                println!("Streamed to server: {:?}", data.as_slice());
+                
+                dprint!("Streamed to server: {:?}", data.as_slice());
             }
         }
     }
@@ -62,24 +64,24 @@ impl Client {
         //
         // read
         //
-        eprintln!("Entered Tokio Read Client Thread");
-        let mut fps = fps_clock::FpsClock::new(60);
+        //eprintln!("Entered Tokio Read Client Thread");
+        let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
             // let mut buf = vec![0; 100 * 100 * 3];
-            let mut buf = vec![0; 9];
+            let mut buf = vec![0; 9]; // CHANGE 9 TO MAX ACTIVE TILES
             read_from_server_connection
                 .read(&mut buf)
                 .await
                 .expect("Failed to read from server");
 
-            eprintln!("Received: {:?}", buf);
+            dprint!("Received: {:?}", buf);
 
             if buf[0] == 0 {
-                eprintln!("Server Disconnected");
+                dprint!("Server Disconnected");
                 break;
             }
 
-            tokio::spawn(shared_io::data_to_active_tiles(shared.clone(), buf));
+            tokio::spawn(data_to_active_tiles(shared.clone(), buf));
 
             fps.tick();
         }

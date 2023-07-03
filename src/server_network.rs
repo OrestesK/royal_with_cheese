@@ -1,5 +1,5 @@
-use super::shared::Shared;
-use super::{shared::Action, shared_io};
+use super::{shared::Shared, shared::Action, shared_io, dprint};
+
 use std::{
     io::Error,
     sync::{Arc, Mutex},
@@ -9,6 +9,7 @@ use tokio::{
     net::{tcp::OwnedReadHalf, tcp::OwnedWriteHalf, TcpListener},
 };
 
+const FPS: u32 = 10;
 // struct Server
 pub struct Server {
     pub address: String,
@@ -20,7 +21,9 @@ impl Server {
     pub async fn new(ip: &str, port: &str) -> Result<Self, Error> {
         let address = format!("{}:{}", ip, port); //formats address
         let connection = TcpListener::bind(&address).await?; // binds server to address
-                                                             // eprintln!("Listening on: {}", address);
+        
+        dprint!("Listening on: {}", address);
+        
         Ok(Server {
             address,
             connection,
@@ -35,15 +38,16 @@ impl Server {
         //
         // write
         //
-        //eprintln!("Entered Tokio Write Client Thread");
-        let mut fps = fps_clock::FpsClock::new(1);
+        let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
             let data_to_send = shared_io::active_tiles_to_data(shared.clone());
 
             _ = client_write_connection
                 .write_all(data_to_send.as_slice())
                 .await;
-            // eprintln!("Sent: {:?}", data_to_send.as_slice());
+            
+            dprint!("Sent: {:?}", data_to_send.as_slice());
+            
             fps.tick();
         }
     }
@@ -57,14 +61,13 @@ impl Server {
         //
         // read
         //
-        // eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(60);
         loop {
             let mut buf = vec![0; 1]; //CHANGE TO 1 AFTER TESTING
             client_read_connection
                 .read(&mut buf)
                 .await
-                .expect("Failed to read from client");
+                .expect("Failed to read from client (Client Disconnected)");
 
             if buf[0] == 0 {
                 // eprintln!("Client Disconnected");
@@ -80,10 +83,11 @@ impl Server {
                 },
             );
 
+            dprint!("Received: {:?} from Client {:?}", buf, id);
+
             // updates active tiles
             tokio::spawn(shared_io::update_active_tiles(shared.clone()));
 
-            // eprintln!("Received: {:?} from Client {:?}", buf, id);
             fps.tick();
         }
     }
@@ -99,10 +103,10 @@ impl Server {
                 .await
                 .expect("Failed to accept connection");
 
-            // eprintln!(
-            //     "Received connection from {:?}",
-            //     client_connection.peer_addr().unwrap()
-            // );
+            dprint!(
+                "Received connection from {:?}",
+                client_connection.peer_addr().unwrap()
+            );
 
             // splits connection into read and write connections
             let (read, write) = client_connection.into_split();

@@ -1,9 +1,8 @@
 use futures::executor::block_on;
-use royal_with_cheese::shared::Action;
-use royal_with_cheese::shared_io;
-use royal_with_cheese::{client_network::Client, display, server_network::Server, shared::Shared};
+use royal_with_cheese::{client_network::Client, display, server_network::Server, shared::Shared, dprint};
 use std::{
     env,
+    panic,
     sync::{Arc, Mutex},
 };
 
@@ -14,11 +13,24 @@ const PORT: &str = "8080";
 async fn main() {
     let args: Vec<String> = env::args().collect();
 
+    panic_hook();
+    
     if args.len() == 2 && args[1] == "S" {
         server()
     } else {
         client()
     }
+}
+
+// declares panic hook
+fn panic_hook(){
+    panic::set_hook(Box::new(|panic_info| {
+        if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            dprint!("panic: {:?}", s);
+        } else {
+            println!("panic occurred");
+        }
+    }));
 }
 
 // server side
@@ -42,7 +54,7 @@ fn server() {
 fn client() {
     // builds client connection to server
     let client: Client =
-        block_on(Client::new(ADDRESS, PORT)).expect("Failed to connect to address");
+        block_on(Client::new(ADDRESS, PORT)).expect(&format!("Failed to connect to {} on {}", ADDRESS, PORT)[..]);
 
     // creates shared 'Shared' data
     let shared = Shared::new().unwrap();
@@ -50,4 +62,10 @@ fn client() {
 
     block_on(Client::initialize_client(client, shared.clone()));
     display::cursive(shared.clone(), true);
+    //let mut fps = fps_clock::FpsClock::new(10);
+    //loop {
+        // eprintln!("Received: {:?}", buf);
+
+    //    fps.tick();
+    //}
 }

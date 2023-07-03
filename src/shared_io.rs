@@ -28,17 +28,36 @@ pub async fn update_active_tiles(shared: Arc<Mutex<Shared>>) {
     let mut actions = get_and_clear_server_actions(shared.clone());
     let mut active_tiles = get_server_active_tiles(shared.clone());
 
-    active_tiles.push(Cell {
+    let test_cell = Cell {
         cell_type: 1,
         coordinate: Vec2 {
             x: actions.pop_front().unwrap().code as usize - 60,
             y: 20,
         },
-    });
+    };
 
-    let mut final_actions = shared.lock().unwrap();
-    final_actions.active_tiles = active_tiles;
-    drop(final_actions);
+
+    let mut new_tile: i8 = -1;
+    for (i, tile) in active_tiles.clone().iter_mut().enumerate(){
+        if tile.coordinate == test_cell.coordinate{
+            new_tile = i as i8;
+            break;
+        } 
+    }
+
+    if new_tile == -1{
+        active_tiles.push(test_cell);
+
+    }
+    else{
+        active_tiles.remove(new_tile as usize);
+    }
+
+    eprintln!("Active: {:#?}", active_tiles);
+
+    let mut final_active_tiles_guard = shared.lock().unwrap();
+    final_active_tiles_guard.active_tiles = active_tiles.clone();
+    drop(final_active_tiles_guard);
 }
 
 pub fn add_action(shared: Arc<Mutex<Shared>>, action: Action) {

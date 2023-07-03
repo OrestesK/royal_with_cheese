@@ -3,12 +3,13 @@ use super::{
     shared::Action,
     shared::Shared,
     shared_io,
+    dprint,
 };
-use cursive::{event::Event, event::EventResult, event::Key, Cursive};
+use cursive::{event::Event, event::EventResult, event::Key};
 use cursive::{
     theme::{BaseColor, ColorStyle},
     vec::Vec2,
-    views::Panel,
+    //views::Panel,
     Printer,
 };
 use std::{
@@ -27,25 +28,26 @@ fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
 }
 
 // GUI
-pub fn cursive(shared: Arc<Mutex<Shared>>, client: bool) {
+pub fn cursive(shared: Arc<Mutex<Shared>>, is_client: bool) {
     let mut siv = cursive::default();
     siv.add_global_callback('q', |s| s.quit());
 
-    let main_board = MainBoard::new(shared, NUM_BOARDS as u8);
-    siv.add_fullscreen_layer(Panel::new(main_board));
-    siv.set_autorefresh(true);
-    siv.run();
-}
+    let main_board = MainBoard::new(shared, NUM_BOARDS as u8, is_client);
+    if is_client{
+        testing(main_board);
+     }
 
-// TEMPORARY FOR TESTING
-pub fn terminal_input() -> Vec<u8> {
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
-    input.get(..1).unwrap().to_string().into_bytes()
+    if false{
+            // else{
+        // siv.add_fullscreen_layer(Panel::new(main_board));
+        siv.set_autorefresh(true);
+        siv.set_fps(10);
+        siv.run();
+        }
 }
 
 impl MainBoard {
-    pub fn new(shared: Arc<Mutex<Shared>>, total_boards: u8) -> Self {
+    pub fn new(shared: Arc<Mutex<Shared>>, total_boards: u8, is_client: bool) -> Self {
         let mut boards = Vec::<Board>::with_capacity(NUM_BOARDS as usize);
         for i in 0..NUM_BOARDS {
             boards.push(Board::new(shared.clone(), i as u8));
@@ -63,24 +65,27 @@ impl MainBoard {
             background_style,
             player_style,
             boards,
+            is_client,
         }
     }
 }
 
-fn print_background(main_board: &MainBoard, printer: &Printer) {
-    for i in 0 as usize..BOARD_WIDTH {
-        for j in 0 as usize..BOARD_HEIGHT {
-            printer.with_style(main_board.player_style, |printer| {
-                printer.print((i, j), EMPTY_CELL)
-            })
-        }
+fn testing(main_board: MainBoard){
+    let mut fps = fps_clock::FpsClock::new(1);
+    send_key_input(main_board.boards.get(0).unwrap().shared.clone(), 100);
+    loop {
+        let active_tiles = shared_io::get_server_active_tiles(main_board.boards[0].shared.clone());
+        dprint!("{:?}", active_tiles);
+        send_key_input(main_board.boards.get(0).unwrap().shared.clone(), 100);
+
+        fps.tick();
     }
+
 }
+
 
 impl cursive::view::View for MainBoard {
     fn draw(&self, printer: &Printer) {
-        //print_background(self, printer);
-
         let active_tiles = shared_io::get_server_active_tiles(self.boards[0].shared.clone());
 
         for i in 0 as usize..active_tiles.len() {
@@ -101,9 +106,14 @@ impl cursive::view::View for MainBoard {
 
     fn on_event(&mut self, event: Event) -> EventResult {
         match event {
-            Event::Key(Key::Enter) => {
-                send_key_input(self.boards.get(0).unwrap().shared.clone(), 97)
+            Event::Char(input) => {
+                send_key_input(self.boards.get(0).unwrap().shared.clone(), input as u8)
             }
+
+            Event::Key(Key::Enter) => {
+                send_key_input(self.boards.get(0).unwrap().shared.clone(), 100)
+            }
+
             _ => return EventResult::Ignored,
         }
         EventResult::Ignored
