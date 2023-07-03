@@ -1,4 +1,4 @@
-use super::{shared::Shared, shared::Action, shared_io, dprint};
+use super::{shared::Shared, shared::Action, shared_io, shared::FPS, dprint};
 
 use std::{
     io::Error,
@@ -9,7 +9,6 @@ use tokio::{
     net::{tcp::OwnedReadHalf, tcp::OwnedWriteHalf, TcpListener},
 };
 
-const FPS: u32 = 10;
 // struct Server
 pub struct Server {
     pub address: String,
@@ -42,6 +41,8 @@ impl Server {
         loop {
             let data_to_send = shared_io::active_tiles_to_data(shared.clone());
 
+            _ = client_write_connection.write_u8(data_to_send.len() as u8).await;
+
             _ = client_write_connection
                 .write_all(data_to_send.as_slice())
                 .await;
@@ -61,32 +62,31 @@ impl Server {
         //
         // read
         //
-        let mut fps = fps_clock::FpsClock::new(60);
+        let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
-            let mut buf = vec![0; 1]; //CHANGE TO 1 AFTER TESTING
-            client_read_connection
-                .read(&mut buf)
+            let action = client_read_connection
+                .read_u8()
                 .await
                 .expect("Failed to read from client (Client Disconnected)");
 
-            if buf[0] == 0 {
-                // eprintln!("Client Disconnected");
+            if action == 0 {
+                dprint!("Client Disconnected");
                 break;
             }
 
-            // adds action
-            shared_io::add_action(
+            // pushes an action
+            shared_io::push_action(
                 shared.clone(),
                 Action {
                     user: id,
-                    code: buf[0],
+                    code: action,
                 },
             );
 
-            dprint!("Received: {:?} from Client {:?}", buf, id);
+            dprint!("Received: {:?} from Client {:?}", action, id);
 
-            // updates active tiles
-            tokio::spawn(shared_io::update_active_tiles(shared.clone()));
+            // processes client actions (updates active tiles)
+            tokio::spawn(shared_io::process_actions(shared.clone()));
 
             fps.tick();
         }

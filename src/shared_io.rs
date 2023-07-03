@@ -3,6 +3,7 @@ use cursive::Vec2;
 use super::{
     board::Cell,
     shared::{Action, Shared},
+    dprint,
 };
 use std::{
     collections::VecDeque,
@@ -24,8 +25,25 @@ pub fn get_and_clear_server_actions(shared: Arc<Mutex<Shared>>) -> VecDeque<Acti
     data
 }
 
-pub async fn update_active_tiles(shared: Arc<Mutex<Shared>>) {
+pub fn push_action(shared: Arc<Mutex<Shared>>, action: Action) {
+    let mut shared = shared.lock().unwrap();
+    shared.actions.push_back(action);
+    drop(shared);
+}
+
+pub fn update_active_tiles(shared: Arc<Mutex<Shared>>, active_tiles: Vec<Cell>){
+    let mut updated_active_tiles = shared.lock().unwrap();
+    updated_active_tiles.active_tiles = active_tiles;
+    drop(updated_active_tiles)
+}
+
+pub async fn process_actions(shared: Arc<Mutex<Shared>>) {
     let mut actions = get_and_clear_server_actions(shared.clone());
+    if actions.len() == 0 {
+        return;
+    }
+
+
     let mut active_tiles = get_server_active_tiles(shared.clone());
 
     let test_cell = Cell {
@@ -53,21 +71,14 @@ pub async fn update_active_tiles(shared: Arc<Mutex<Shared>>) {
         active_tiles.remove(new_tile as usize);
     }
 
-    eprintln!("Active: {:#?}", active_tiles);
+    dprint!("Active: {:#?}", active_tiles);
 
-    let mut final_active_tiles_guard = shared.lock().unwrap();
-    final_active_tiles_guard.active_tiles = active_tiles.clone();
-    drop(final_active_tiles_guard);
-}
-
-pub fn add_action(shared: Arc<Mutex<Shared>>, action: Action) {
-    let mut shared = shared.lock().unwrap();
-    shared.actions.push_back(action);
-    drop(shared);
+    update_active_tiles(shared.clone(), active_tiles)
 }
 
 pub fn active_tiles_to_data(shared: Arc<Mutex<Shared>>) -> Vec<u8> {
     let active_tiles = get_server_active_tiles(shared.clone());
+
     let mut data_to_send = Vec::with_capacity(active_tiles.len() * 3);
     for tile in active_tiles.iter() {
         data_to_send.push(tile.cell_type);
@@ -79,6 +90,7 @@ pub fn active_tiles_to_data(shared: Arc<Mutex<Shared>>) -> Vec<u8> {
 
 pub async fn data_to_active_tiles(shared: Arc<Mutex<Shared>>, data: Vec<u8>) {
     let mut active_tiles = Vec::<Cell>::with_capacity(data.len() / 3);
+
     let mut index = 0;
     while index < data.len() {
         active_tiles.push(Cell {
@@ -91,6 +103,5 @@ pub async fn data_to_active_tiles(shared: Arc<Mutex<Shared>>, data: Vec<u8>) {
         index += 3;
     }
 
-    let mut shared_active_tiles = shared.lock().unwrap();
-    shared_active_tiles.active_tiles = active_tiles;
+    update_active_tiles(shared.clone(), active_tiles)
 }

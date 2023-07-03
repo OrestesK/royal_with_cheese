@@ -28,7 +28,7 @@ fn panic_hook(){
         if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
             dprint!("panic: {:?}", s);
         } else {
-            println!("panic occurred");
+            dprint!("panic occurred");
         }
     }));
 }

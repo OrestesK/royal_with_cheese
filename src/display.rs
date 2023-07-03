@@ -9,16 +9,16 @@ use cursive::{event::Event, event::EventResult, event::Key};
 use cursive::{
     theme::{BaseColor, ColorStyle},
     vec::Vec2,
-    //views::Panel,
+    views::Panel,
     Printer,
 };
 use std::{
-    io,
+    //io,
     sync::{Arc, Mutex},
 };
 
 fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
-    shared_io::add_action(
+    shared_io::push_action(
         shared.clone(),
         Action {
             user: 0,
@@ -33,17 +33,19 @@ pub fn cursive(shared: Arc<Mutex<Shared>>, is_client: bool) {
     siv.add_global_callback('q', |s| s.quit());
 
     let main_board = MainBoard::new(shared, NUM_BOARDS as u8, is_client);
-    if is_client{
-        testing(main_board);
-     }
 
-    if false{
-            // else{
-        // siv.add_fullscreen_layer(Panel::new(main_board));
+    if true{
+        siv.add_fullscreen_layer(Panel::new(main_board));
         siv.set_autorefresh(true);
         siv.set_fps(10);
         siv.run();
-        }
+    }
+    else{
+        if is_client{
+            testing(main_board);
+     }
+
+    }
 }
 
 impl MainBoard {
@@ -75,7 +77,7 @@ fn testing(main_board: MainBoard){
     send_key_input(main_board.boards.get(0).unwrap().shared.clone(), 100);
     loop {
         let active_tiles = shared_io::get_server_active_tiles(main_board.boards[0].shared.clone());
-        dprint!("{:?}", active_tiles);
+        dprint!("Testing: {:?}", active_tiles);
         send_key_input(main_board.boards.get(0).unwrap().shared.clone(), 100);
 
         fps.tick();

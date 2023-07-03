@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use crate::shared_io::{self, data_to_active_tiles};
-use super::{shared::Shared, dprint};
+use super::{shared::Shared, shared::FPS, dprint};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
@@ -11,8 +11,6 @@ use tokio::{
         TcpStream,
     },
 };
-
-const FPS: u32  = 10;
 
 // struct Client
 pub struct Client {
@@ -64,17 +62,19 @@ impl Client {
         //
         // read
         //
-        //eprintln!("Entered Tokio Read Client Thread");
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
-            // let mut buf = vec![0; 100 * 100 * 3];
-            let mut buf = vec![0; 9]; // CHANGE 9 TO MAX ACTIVE TILES
+
+            let size = read_from_server_connection.read_u8().await.expect("Failed to read content size") as usize;
+            if size == 0{ dprint!("Empty active tiles"); continue;} //only happens when debugging :)
+
+            let mut buf = vec![0; size];
             read_from_server_connection
-                .read(&mut buf)
+                .read_exact(&mut buf)
                 .await
                 .expect("Failed to read from server");
 
-            dprint!("Received: {:?}", buf);
+            dprint!("Received: {:?} {:?}", size/3, buf);
 
             if buf[0] == 0 {
                 dprint!("Server Disconnected");

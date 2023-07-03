@@ -1,10 +1,12 @@
 use super::board::Cell;
 use std::{collections::VecDeque, io::Error};
 
+pub const FPS: u32 = 60; // GETS WONKY AT HIGH FPS
+
 // creates debugging macro
 #[macro_export]
 macro_rules! dprint {
-    ($($arg:tt)*) => (if true { ::std::eprintln!($($arg)*); })
+    ($($arg:tt)*) => (if false { ::std::eprintln!($($arg)*); })
 }
  
 // struct Action
@@ -35,7 +37,7 @@ impl Shared {
         })
     }
 
-    // returns map Vec<Vec<Cell>>
+    // returns active_tiles Vec<Cell>
     pub async fn get_active_tiles(self) -> Vec<Cell> {
         return self.active_tiles;
     }
