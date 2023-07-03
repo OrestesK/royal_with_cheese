@@ -42,15 +42,13 @@ impl Client {
         //
         loop {
             let actions = shared_io::get_and_clear_server_actions(shared.clone());
-            for i in 0..actions.len() {
-                let code = actions.get(i).unwrap().code;
-                let data = vec![code];
+            for action in actions {
                 write_to_server_connection
-                    .write(data.as_slice())
+                    .write_u8(action.code)
                     .await
                     .expect("Failed to write");
                 
-                dprint!("Streamed to server: {:?}", data.as_slice());
+                dprint!("Streamed to server: {:?}", action.code);
             }
         }
     }

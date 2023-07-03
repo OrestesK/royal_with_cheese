@@ -36,18 +36,24 @@ fn panic_hook(){
 // server side
 fn server() {
     // builds server connection to socket
-    let server: Server = block_on(Server::new(ADDRESS, PORT)).expect("Failed to create server");
+    let server: Server = 
+        block_on(Server::new(ADDRESS, PORT)).expect(&format!("Failed to listen on {}:{}", ADDRESS, PORT)[..]);
+
 
     // creates shared 'Shared' data
     let shared = Shared::new().unwrap();
     let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
 
-    // initializes reading and writing from clients
+    // initializes server, reading/writing from/to clients
     tokio::spawn(Server::initialize_server(server, shared.clone()));
+
+    // wait for 1 second, will make a concurrent listener in future
+    let _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)); //drop(var_name) to end early
 
     // initializes and runs GUI
     display::cursive(shared.clone(), false);
-    loop {}
+
+    loop{} //FOR TEST ONLY
 }
 
 // client side
@@ -60,12 +66,9 @@ fn client() {
     let shared = Shared::new().unwrap();
     let shared = Arc::new(Mutex::new(shared)); //creates shared 'Shared' Struct
 
+    // initializes client, reading/writing from/to server
     block_on(Client::initialize_client(client, shared.clone()));
-    display::cursive(shared.clone(), true);
-    //let mut fps = fps_clock::FpsClock::new(10);
-    //loop {
-        // eprintln!("Received: {:?}", buf);
 
-    //    fps.tick();
-    //}
+    // initializes and runs GUI
+    display::cursive(shared.clone(), true);
 }

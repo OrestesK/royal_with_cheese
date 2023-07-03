@@ -1,6 +1,5 @@
 use super::{
     board::{Board, MainBoard, BOARD_HEIGHT, BOARD_WIDTH, EMPTY_CELL, NUM_BOARDS, PLAYER_NUM},
-    shared::Action,
     shared::Shared,
     shared_io,
     dprint,
@@ -18,13 +17,7 @@ use std::{
 };
 
 fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
-    shared_io::push_action(
-        shared.clone(),
-        Action {
-            user: 0,
-            code: data,
-        },
-    );
+    shared_io::push_action(shared.clone(), 0, data);
 }
 
 // GUI
@@ -90,10 +83,15 @@ impl cursive::view::View for MainBoard {
     fn draw(&self, printer: &Printer) {
         let active_tiles = shared_io::get_server_active_tiles(self.boards[0].shared.clone());
 
-        for i in 0 as usize..active_tiles.len() {
-            let cell = active_tiles.get(i).unwrap();
+        for cell in active_tiles{
 
-            printer.with_color(self.player_style, |printer| {
+            let mut color = self.player_style;
+            if cell.cell_type == 2{
+                color = self.background_style;
+            }
+
+
+            printer.with_color(color, |printer| {
                 printer.print(
                     (cell.coordinate.x as usize, cell.coordinate.y as usize),
                     EMPTY_CELL,

@@ -25,7 +25,9 @@ pub fn get_and_clear_server_actions(shared: Arc<Mutex<Shared>>) -> VecDeque<Acti
     data
 }
 
-pub fn push_action(shared: Arc<Mutex<Shared>>, action: Action) {
+pub fn push_action(shared: Arc<Mutex<Shared>>, user: u8, code: u8) {    
+    let action = Action { user, code };
+
     let mut shared = shared.lock().unwrap();
     shared.actions.push_back(action);
     drop(shared);
@@ -41,15 +43,19 @@ pub async fn process_actions(shared: Arc<Mutex<Shared>>) {
     let mut actions = get_and_clear_server_actions(shared.clone());
     if actions.len() == 0 {
         return;
+
     }
+
+    //TODO FIX, RIGHT NOW ONLY GETS THE FRONT ACTION
 
 
     let mut active_tiles = get_server_active_tiles(shared.clone());
 
+    let action = actions.pop_front().unwrap();
     let test_cell = Cell {
-        cell_type: 1,
+        cell_type: action.user,
         coordinate: Vec2 {
-            x: actions.pop_front().unwrap().code as usize - 60,
+            x: action.code as usize - 60,
             y: 20,
         },
     };

@@ -75,13 +75,7 @@ impl Server {
             }
 
             // pushes an action
-            shared_io::push_action(
-                shared.clone(),
-                Action {
-                    user: id,
-                    code: action,
-                },
-            );
+            shared_io::push_action(shared.clone(), id as u8, action as u8);
 
             dprint!("Received: {:?} from Client {:?}", action, id);
 
