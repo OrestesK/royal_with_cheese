@@ -1,12 +1,34 @@
-use super::{shared::Shared, shared::Action, shared_io, shared::FPS, dprint};
-
+use super::{
+    shared::{
+        Shared, 
+        FPS
+    }, 
+    shared_io::{
+        active_tiles_to_data, 
+        push_action, 
+        process_actions
+    },
+    dprint
+};
 use std::{
     io::Error,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, 
+        Mutex
+    },
 };
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::{tcp::OwnedReadHalf, tcp::OwnedWriteHalf, TcpListener},
+    io::{
+        AsyncReadExt, 
+        AsyncWriteExt
+    },
+    net::{
+        tcp::{
+            OwnedReadHalf, 
+            OwnedWriteHalf
+        }, 
+        TcpListener
+    },
 };
 
 // struct Server
@@ -29,7 +51,7 @@ impl Server {
         })
     }
 
-    // sends data to client, runs constantly
+    // writes data to client, runs constantly
     async fn write_data_to_client(
         shared: Arc<Mutex<Shared>>,
         mut client_write_connection: OwnedWriteHalf,
@@ -39,9 +61,15 @@ impl Server {
         //
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
-            let data_to_send = shared_io::active_tiles_to_data(shared.clone());
+            let data_to_send = active_tiles_to_data(shared.clone());
+            if data_to_send.len() == 0{
+                fps.tick();
+                continue;
+            }
 
-            _ = client_write_connection.write_u8(data_to_send.len() as u8).await;
+            _ = client_write_connection
+                .write_u8(data_to_send.len() as u8)
+                .await;
 
             _ = client_write_connection
                 .write_all(data_to_send.as_slice())
@@ -53,7 +81,7 @@ impl Server {
         }
     }
 
-    // reads data from client, runs constantly
+    // reads data from client, runs constantly but awaits data
     async fn read_data_from_client(
         shared: Arc<Mutex<Shared>>,
         mut client_read_connection: OwnedReadHalf,
@@ -75,18 +103,18 @@ impl Server {
             }
 
             // pushes an action
-            shared_io::push_action(shared.clone(), id as u8, action as u8);
+            push_action(shared.clone(), id as u8, action as u8);
 
             dprint!("Received: {:?} from Client {:?}", action, id);
 
             // processes client actions (updates active tiles)
-            tokio::spawn(shared_io::process_actions(shared.clone()));
+            tokio::spawn(process_actions(shared.clone()));
 
             fps.tick();
         }
     }
 
-    // initiates reading and writing
+    // initializes server, runs constantly to accept new clients
     pub async fn initialize_server(self, shared: Arc<Mutex<Shared>>) {
         let mut id: u8 = 0;
         loop {
@@ -105,6 +133,7 @@ impl Server {
             // splits connection into read and write connections
             let (read, write) = client_connection.into_split();
 
+            // spawns reading and writing threads
             tokio::spawn(Server::read_data_from_client(shared.clone(), read, id));
             tokio::spawn(Server::write_data_to_client(shared.clone(), write));
         }

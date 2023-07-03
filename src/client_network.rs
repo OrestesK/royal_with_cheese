@@ -1,13 +1,32 @@
+use super::{
+    shared::{
+        Shared, 
+        FPS
+    }, 
+    shared_io::{
+        get_and_clear_actions,
+        data_to_active_tiles
+    },
+    dprint
+};
 use std::{
     io::Error,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, 
+        Mutex
+    },
 };
-use crate::shared_io::{self, data_to_active_tiles};
-use super::{shared::Shared, shared::FPS, dprint};
+
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::{
+        AsyncReadExt, 
+        AsyncWriteExt
+    },
     net::{
-        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        tcp::{
+            OwnedReadHalf, 
+            OwnedWriteHalf
+        },
         TcpStream,
     },
 };
@@ -33,6 +52,7 @@ impl Client {
         })
     }
 
+    // writes data to sever, runs constantly
     pub async fn write_data_to_server(
         shared: Arc<Mutex<Shared>>,
         mut write_to_server_connection: OwnedWriteHalf,
@@ -40,19 +60,23 @@ impl Client {
         //
         // write
         //
+        let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
-            let actions = shared_io::get_and_clear_server_actions(shared.clone());
+            let actions = get_and_clear_actions(shared.clone());
+
             for action in actions {
                 write_to_server_connection
                     .write_u8(action.code)
                     .await
-                    .expect("Failed to write");
+                    .expect("Failed to write to server");
                 
                 dprint!("Streamed to server: {:?}", action.code);
             }
+            fps.tick();
         }
     }
 
+    // reads data from server, runs constantly but awaits data
     pub async fn read_data_from_server(
         shared: Arc<Mutex<Shared>>,
         mut read_from_server_connection: OwnedReadHalf,
@@ -63,33 +87,36 @@ impl Client {
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
 
-            let size = read_from_server_connection.read_u8().await.expect("Failed to read content size") as usize;
-            if size == 0{ dprint!("Empty active tiles"); continue;} //only happens when debugging :)
+            // reads size of incoming data
+            let size = read_from_server_connection.read_u8()
+                .await
+                .expect("Failed to read content size") as usize;
+            if size == 0{ 
+                dprint!("Empty active tiles"); //only happens whens debugging
+                fps.tick();
+                continue;
+            }
 
-            let mut buf = vec![0; size];
+            let mut active_tiles_data = vec![0; size];
             read_from_server_connection
-                .read_exact(&mut buf)
+                .read_exact(&mut active_tiles_data)
                 .await
                 .expect("Failed to read from server");
 
-            dprint!("Received: {:?} {:?}", size/3, buf);
+            dprint!("Received: {:?} {:?}", size/3, active_tiles_data);
 
-            if buf[0] == 0 {
-                dprint!("Server Disconnected");
-                break;
-            }
-
-            tokio::spawn(data_to_active_tiles(shared.clone(), buf));
+            tokio::spawn(data_to_active_tiles(shared.clone(), active_tiles_data));
 
             fps.tick();
         }
     }
 
+    // initializes client
     pub async fn initialize_client(self, shared: Arc<Mutex<Shared>>) {
         // splits connection into read and write connections
         let (read, write) = self.connection.into_split();
 
-        // initializes reading data from server
+        // spawns reading and writing threads
         tokio::spawn(Client::read_data_from_server(shared.clone(), read));
         tokio::spawn(Client::write_data_to_server(shared.clone(), write));
     }

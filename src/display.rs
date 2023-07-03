@@ -27,7 +27,7 @@ pub fn cursive(shared: Arc<Mutex<Shared>>, is_client: bool) {
 
     let main_board = MainBoard::new(shared, NUM_BOARDS as u8, is_client);
 
-    if true{
+    if false{
         siv.add_fullscreen_layer(Panel::new(main_board));
         siv.set_autorefresh(true);
         siv.set_fps(10);

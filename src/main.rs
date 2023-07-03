@@ -13,7 +13,7 @@ const PORT: &str = "8080";
 async fn main() {
     let args: Vec<String> = env::args().collect();
 
-    panic_hook();
+    // panic_hook();
     
     if args.len() == 2 && args[1] == "S" {
         server()
@@ -47,8 +47,8 @@ fn server() {
     // initializes server, reading/writing from/to clients
     tokio::spawn(Server::initialize_server(server, shared.clone()));
 
-    // wait for 1 second, will make a concurrent listener in future
-    let _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)); //drop(var_name) to end early
+    // wait for 3 seconds, #TODO make a concurrent listener
+    let _ = tokio::time::sleep(tokio::time::Duration::from_secs(2)); //drop(var_name) to end early
 
     // initializes and runs GUI
     display::cursive(shared.clone(), false);

@@ -1,12 +1,12 @@
 use super::board::Cell;
 use std::{collections::VecDeque, io::Error};
 
-pub const FPS: u32 = 60; // GETS WONKY AT HIGH FPS
+pub const FPS: u32 = 1; // GETS WONKY AT HIGH FPS
 
 // creates debugging macro
 #[macro_export]
 macro_rules! dprint {
-    ($($arg:tt)*) => (if false { ::std::eprintln!($($arg)*); })
+    ($($arg:tt)*) => (if true { ::std::eprintln!($($arg)*); })
 }
  
 // struct Action
