@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-cursive = "0.20"
-tokio = { version = "1.26.0", features = ["full"] }
-futures = "0.3"
-fps_clock = "2.0"
+tokio = { version = "1.29.1", features = ["full"] }
+futures = "0.3.28"
+crossterm = {version= "0.26.1", features = ["event-stream"]}
+fps_clock = "2.0.0"

@@ -1,5 +1,4 @@
 use super::shared::Shared;
-use cursive::{theme::ColorStyle, Vec2};
 use std::sync::{Arc, Mutex};
 
 pub const BOARD_WIDTH: usize = 180;
@@ -12,8 +11,10 @@ pub const EMPTY_CELL: &str = " ";
 
 #[derive(Copy, Clone, Debug)]
 pub struct Cell {
+    pub owner: u8,
     pub cell_type: u8,
-    pub coordinate: Vec2,
+    pub x: u8,
+    pub y: u8,
 }
 
 pub struct Board {
@@ -26,8 +27,8 @@ pub struct MainBoard {
     pub board_height: u8,
     pub num_players: u8,
     pub total_boards: u8,
-    pub background_style: ColorStyle,
-    pub player_style: ColorStyle,
+    // pub background_style: ColorStyle,
+    // pub player_style: ColorStyle,
     pub boards: Vec<Board>,
     pub is_client: bool,
 }

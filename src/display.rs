@@ -1,121 +1,165 @@
-use super::{
-    board::{Board, MainBoard, BOARD_HEIGHT, BOARD_WIDTH, EMPTY_CELL, NUM_BOARDS, PLAYER_NUM},
-    shared::Shared,
-    shared_io,
-    dprint,
+use super::{board::Cell, shared::Shared, shared::FPS, shared_io};
+use crossterm::{
+    cursor,
+    event::{
+        DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyCode,
+        KeyCode::{Char, Esc},
+    },
+    style::{self, Color, SetForegroundColor},
+    terminal, ExecutableCommand, QueueableCommand, Result,
 };
-use cursive::{event::Event, event::EventResult, event::Key};
-use cursive::{
-    theme::{BaseColor, ColorStyle},
-    vec::Vec2,
-    views::Panel,
-    Printer,
-};
+use futures::{future::FutureExt, select, StreamExt};
 use std::{
-    //io,
+    io::{stdout, Stdout, Write},
     sync::{Arc, Mutex},
 };
 
+async fn get_input() -> Option<KeyCode> {
+    // reader
+    let mut reader = EventStream::new();
+
+    // loops because there might be keypresses queued up
+    loop {
+        // gets event from reader
+        let mut event = reader.next().fuse();
+
+        select! {
+            maybe_event = event => {
+                match maybe_event {
+                    // Event available
+                    Some(Ok(event)) => {
+                        // Key Press
+                        match event{
+                            Event::Key(val) => return Some(val.code),
+                            _ => {},
+
+                        }
+                    }
+                    // Error
+                    Some(Err(e)) => panic!("Error: {:?}\r", e),
+                    // No event
+                    None => break,
+                }
+            }
+        };
+    }
+    None
+}
 fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
+    // dprint!("{:?}", data);
     shared_io::push_action(shared.clone(), 0, data);
 }
 
-// GUI
-pub fn cursive(shared: Arc<Mutex<Shared>>, is_client: bool) {
-    let mut siv = cursive::default();
-    siv.add_global_callback('q', |s| s.quit());
-
-    let main_board = MainBoard::new(shared, NUM_BOARDS as u8, is_client);
-
-    if false{
-        siv.add_fullscreen_layer(Panel::new(main_board));
-        siv.set_autorefresh(true);
-        siv.set_fps(10);
-        siv.run();
-    }
-    else{
-        if is_client{
-            testing(main_board);
-     }
-
-    }
-}
-
-impl MainBoard {
-    pub fn new(shared: Arc<Mutex<Shared>>, total_boards: u8, is_client: bool) -> Self {
-        let mut boards = Vec::<Board>::with_capacity(NUM_BOARDS as usize);
-        for i in 0..NUM_BOARDS {
-            boards.push(Board::new(shared.clone(), i as u8));
-        }
-
-        let background_style =
-            ColorStyle::new(BaseColor::White, BaseColor::light(BaseColor::White));
-        let player_style = ColorStyle::new(BaseColor::White, BaseColor::light(BaseColor::Red));
-
-        MainBoard {
-            board_width: BOARD_WIDTH as u8,
-            board_height: BOARD_HEIGHT as u8,
-            num_players: PLAYER_NUM,
-            total_boards,
-            background_style,
-            player_style,
-            boards,
-            is_client,
-        }
-    }
-}
-
-fn testing(main_board: MainBoard){
-    let mut fps = fps_clock::FpsClock::new(1);
-    send_key_input(main_board.boards.get(0).unwrap().shared.clone(), 100);
+async fn process_input(shared: Arc<Mutex<Shared>>) {
+    let mut fps = fps_clock::FpsClock::new(FPS);
     loop {
-        let active_tiles = shared_io::get_server_active_tiles(main_board.boards[0].shared.clone());
-        dprint!("Testing: {:?}", active_tiles);
-        send_key_input(main_board.boards.get(0).unwrap().shared.clone(), 100);
+        match get_input().await {
+            Some(Char(character)) => send_key_input(shared.clone(), character as u8),
+            Some(Esc) => send_key_input(shared.clone(), 255),
+            _ => {}
+        }
+        fps.tick();
+    }
+}
 
+const COLORS: [Color; 21] = [
+    Color::Black,
+    Color::DarkGrey,
+    Color::Grey,
+    Color::White,
+    Color::DarkRed,
+    Color::Red,
+    Color::DarkGreen,
+    Color::Green,
+    Color::DarkYellow,
+    Color::Yellow,
+    Color::DarkBlue,
+    Color::Blue,
+    Color::DarkMagenta,
+    Color::Magenta,
+    Color::DarkCyan,
+    Color::Cyan,
+    Color::AnsiValue(0),
+    Color::AnsiValue(15),
+    Color::Rgb { r: 255, g: 0, b: 0 },
+    Color::Rgb { r: 0, g: 255, b: 0 },
+    Color::Rgb { r: 0, g: 0, b: 255 },
+];
+
+pub fn print(stdout: &mut Stdout, tile: Cell) -> Result<()> {
+    let color = COLORS[tile.owner as usize + 3];
+    stdout
+        .queue(SetForegroundColor(color))?
+        .queue(cursor::MoveTo(tile.x as u16, tile.y as u16))?
+        .queue(style::Print("█"))?;
+
+    Ok(())
+}
+pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> {
+    if !is_client {
+        return Ok(());
+    }
+
+    let mut stdout = stdout();
+    stdout = init(stdout)?;
+
+    tokio::spawn(process_input(shared.clone()));
+
+    let mut fps = fps_clock::FpsClock::new(FPS);
+
+    // while not pressed 'Esc'
+    'main: loop {
+        // following render calls will keep rendering the last rendered state.
+        stdout.execute(terminal::BeginSynchronizedUpdate)?;
+
+        stdout.queue(terminal::Clear(terminal::ClearType::All))?;
+
+        let active_tiles = shared_io::get_server_active_tiles(shared.clone());
+
+        for tile in active_tiles {
+            // eprintln!("{:#?}", tile);
+            // TODO
+            if tile.x == 255 {
+                break 'main;
+            }
+            print(&mut stdout, tile)?;
+        }
+        stdout.flush()?;
+
+        stdout.execute(terminal::EndSynchronizedUpdate)?;
         fps.tick();
     }
 
+    deinit(stdout)?;
+    Ok(())
 }
 
+pub fn init(mut stdout: Stdout) -> Result<Stdout> {
+    terminal::enable_raw_mode()?;
 
-impl cursive::view::View for MainBoard {
-    fn draw(&self, printer: &Printer) {
-        let active_tiles = shared_io::get_server_active_tiles(self.boards[0].shared.clone());
+    stdout.queue(DisableMouseCapture)?;
+    stdout.queue(cursor::Hide)?;
 
-        for cell in active_tiles{
+    stdout.queue(terminal::Clear(terminal::ClearType::Purge))?;
 
-            let mut color = self.player_style;
-            if cell.cell_type == 2{
-                color = self.background_style;
-            }
+    stdout.queue(SetForegroundColor(Color::Blue))?; // block color
 
+    stdout.flush()?;
 
-            printer.with_color(color, |printer| {
-                printer.print(
-                    (cell.coordinate.x as usize, cell.coordinate.y as usize),
-                    EMPTY_CELL,
-                )
-            })
-        }
-    }
+    Ok(stdout)
+}
 
-    fn required_size(&mut self, _: Vec2) -> Vec2 {
-        Vec2::new(BOARD_WIDTH, BOARD_HEIGHT)
-    }
+pub fn deinit(mut stdout: Stdout) -> Result<Stdout> {
+    terminal::disable_raw_mode()?;
 
-    fn on_event(&mut self, event: Event) -> EventResult {
-        match event {
-            Event::Char(input) => {
-                send_key_input(self.boards.get(0).unwrap().shared.clone(), input as u8)
-            }
+    stdout.queue(EnableMouseCapture)?;
+    stdout.queue(cursor::Hide)?;
 
-            Event::Key(Key::Enter) => {
-                send_key_input(self.boards.get(0).unwrap().shared.clone(), 100)
-            }
+    stdout.queue(terminal::Clear(terminal::ClearType::Purge))?;
 
-            _ => return EventResult::Ignored,
-        }
-        EventResult::Ignored
-    }
+    stdout.queue(terminal::LeaveAlternateScreen)?;
+
+    stdout.flush()?;
+
+    Ok(stdout)
 }

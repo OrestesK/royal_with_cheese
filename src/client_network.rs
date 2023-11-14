@@ -1,32 +1,17 @@
 use super::{
-    shared::{
-        Shared, 
-        FPS
-    }, 
-    shared_io::{
-        get_and_clear_actions,
-        data_to_active_tiles
-    },
-    dprint
+    dclient,
+    shared::{Shared, FPS},
+    shared_io::{data_to_active_tiles, get_and_clear_actions},
 };
 use std::{
     io::Error,
-    sync::{
-        Arc, 
-        Mutex
-    },
+    sync::{Arc, Mutex},
 };
 
 use tokio::{
-    io::{
-        AsyncReadExt, 
-        AsyncWriteExt
-    },
+    io::{AsyncReadExt, AsyncWriteExt},
     net::{
-        tcp::{
-            OwnedReadHalf, 
-            OwnedWriteHalf
-        },
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
         TcpStream,
     },
 };
@@ -43,9 +28,9 @@ impl Client {
         let address = format!("{}:{}", ip, port); //formats address
         let connection = TcpStream::connect(&address).await?; // connects to address
         connection.set_nodelay(true)?; //disables Nagle's algorithm meaning data is sent instantly
-        
-        dprint!("Connected to: {}", address);
-        
+
+        dclient!("Connected to: {}", address);
+
         Ok(Client {
             address,
             connection,
@@ -69,8 +54,8 @@ impl Client {
                     .write_u8(action.code)
                     .await
                     .expect("Failed to write to server");
-                
-                dprint!("Streamed to server: {:?}", action.code);
+
+                dclient!("Streamed to server: {:?}", action.code);
             }
             fps.tick();
         }
@@ -86,13 +71,13 @@ impl Client {
         //
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
-
             // reads size of incoming data
-            let size = read_from_server_connection.read_u8()
+            let size = read_from_server_connection
+                .read_u8()
                 .await
                 .expect("Failed to read content size") as usize;
-            if size == 0{ 
-                dprint!("Empty active tiles"); //only happens whens debugging
+            if size == 0 {
+                dclient!("Empty active tiles"); //only happens whens debugging
                 fps.tick();
                 continue;
             }
@@ -103,7 +88,7 @@ impl Client {
                 .await
                 .expect("Failed to read from server");
 
-            dprint!("Received: {:?} {:?}", size/3, active_tiles_data);
+            dclient!("Received: {:?} {:?}", size / 3, active_tiles_data);
 
             tokio::spawn(data_to_active_tiles(shared.clone(), active_tiles_data));
 

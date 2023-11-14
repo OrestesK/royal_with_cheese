@@ -1,33 +1,17 @@
 use super::{
-    shared::{
-        Shared, 
-        FPS
-    }, 
-    shared_io::{
-        active_tiles_to_data, 
-        push_action, 
-        process_actions
-    },
-    dprint
+    dserver,
+    shared::{Shared, FPS},
+    shared_io::{active_tiles_to_data, add_tile, process_actions, push_action},
 };
 use std::{
     io::Error,
-    sync::{
-        Arc, 
-        Mutex
-    },
+    sync::{Arc, Mutex},
 };
 use tokio::{
-    io::{
-        AsyncReadExt, 
-        AsyncWriteExt
-    },
+    io::{AsyncReadExt, AsyncWriteExt},
     net::{
-        tcp::{
-            OwnedReadHalf, 
-            OwnedWriteHalf
-        }, 
-        TcpListener
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpListener,
     },
 };
 
@@ -42,9 +26,9 @@ impl Server {
     pub async fn new(ip: &str, port: &str) -> Result<Self, Error> {
         let address = format!("{}:{}", ip, port); //formats address
         let connection = TcpListener::bind(&address).await?; // binds server to address
-        
-        dprint!("Listening on: {}", address);
-        
+
+        dserver!("Listening on: {}", address);
+
         Ok(Server {
             address,
             connection,
@@ -55,28 +39,28 @@ impl Server {
     async fn write_data_to_client(
         shared: Arc<Mutex<Shared>>,
         mut client_write_connection: OwnedWriteHalf,
-    ) {
+    ) -> Result<(), Error> {
         //
         // write
         //
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
             let data_to_send = active_tiles_to_data(shared.clone());
-            if data_to_send.len() == 0{
+            if data_to_send.len() == 0 {
                 fps.tick();
                 continue;
             }
 
             _ = client_write_connection
                 .write_u8(data_to_send.len() as u8)
-                .await;
+                .await?;
 
             _ = client_write_connection
                 .write_all(data_to_send.as_slice())
-                .await;
-            
-            dprint!("Sent: {:?}", data_to_send.as_slice());
-            
+                .await?;
+
+            dserver!("Sent: {:?}", data_to_send.as_slice());
+
             fps.tick();
         }
     }
@@ -86,38 +70,45 @@ impl Server {
         shared: Arc<Mutex<Shared>>,
         mut client_read_connection: OwnedReadHalf,
         id: u8,
-    ) {
+    ) -> Result<(), Error> {
         //
         // read
         //
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
-            let action = client_read_connection
-                .read_u8()
-                .await
-                .expect("Failed to read from client (Client Disconnected)");
-
-            if action == 0 {
-                dprint!("Client Disconnected");
-                break;
-            }
+            let action = client_read_connection.read_u8().await?;
+            // .expect("Failed to read from client (Client Disconnected)");
 
             // pushes an action
             push_action(shared.clone(), id as u8, action as u8);
 
-            dprint!("Received: {:?} from Client {:?}", action, id);
+            dserver!("Received: {:?} from Client {:?}", action, id);
 
             // processes client actions (updates active tiles)
-            tokio::spawn(process_actions(shared.clone()));
+            // tokio::spawn(process_actions(shared.clone()));
 
             fps.tick();
         }
     }
 
-    // initializes server, runs constantly to accept new clients
-    pub async fn initialize_server(self, shared: Arc<Mutex<Shared>>) {
-        let mut id: u8 = 0;
+    async fn process_all_client_actions(shared: Arc<Mutex<Shared>>) {
+        let mut fps = fps_clock::FpsClock::new(FPS);
+
         loop {
+            // maybe make this tokio spawn later
+            process_actions(shared.clone()).await;
+            fps.tick();
+        }
+    }
+
+    // initializes server, loop runs constantly to accept new clients
+    pub async fn initialize_server(self, shared: Arc<Mutex<Shared>>) {
+        // process actions
+        tokio::spawn(Server::process_all_client_actions(shared.clone()));
+
+        // server loop
+        let mut id: u8 = 0;
+        while id < 4 {
             id += 1;
             let (client_connection, _) = self
                 .connection
@@ -125,10 +116,14 @@ impl Server {
                 .await
                 .expect("Failed to accept connection");
 
-            dprint!(
+            dserver!(
                 "Received connection from {:?}",
                 client_connection.peer_addr().unwrap()
             );
+
+            // places user on map
+            add_tile(shared.clone(), id, 0, 20 * id, 20 * id).await;
+            add_tile(shared.clone(), id, 0, 20 * id + 1, 20 * id).await;
 
             // splits connection into read and write connections
             let (read, write) = client_connection.into_split();
