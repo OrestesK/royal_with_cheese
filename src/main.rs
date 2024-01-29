@@ -24,7 +24,7 @@ async fn main() {
     }
 }
 
-// // declares panic hook
+// declares panic hook
 // fn panic_hook() {
 //     panic::set_hook(Box::new(|panic_info| {
 //         if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
