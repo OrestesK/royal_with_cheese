@@ -1,3 +1,12 @@
+use std::{fmt::Arguments, fs::OpenOptions, io::Write};
+pub fn to_file(data: Arguments) {
+    let mut f = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open("./log")
+        .expect("open log failed");
+    write!(f, "{}", data.to_string()).expect("write log failed");
+}
 // creates debugging macro
 #[macro_export]
 macro_rules! dprint {
@@ -17,4 +26,12 @@ macro_rules! dclient {
 #[macro_export]
 macro_rules! dinput{
     ($($arg:tt)*) => (if false { ::std::eprintln!($($arg)*); })
+}
+
+#[macro_export]
+macro_rules! dfile{
+    ($($arg:tt)*) => (if true {
+        use crate::macros::to_file;
+        to_file(format_args!($($arg)*));
+    })
 }

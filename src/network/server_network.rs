@@ -124,6 +124,7 @@ impl Server {
             // places user on map
             add_tile(shared.clone(), id, 0, 20 * id, 20 * id).await;
             add_tile(shared.clone(), id, 0, 20 * id + 1, 20 * id).await;
+            add_tile(shared.clone(), id, 0, 20 * id + 2, 20 * id).await;
 
             // splits connection into read and write connections
             let (read, write) = client_connection.into_split();

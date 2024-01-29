@@ -1,9 +1,9 @@
-use crate::board::Cell;
+use crate::{board::Cell, dfile};
 use std::{collections::VecDeque, io::Error};
 
 pub const FPS: u32 = 120; // GETS WONKY AT HIGH FPS
-                          //
-                          // struct Action
+
+// struct Action
 #[derive(Clone, Debug)]
 pub struct Action {
     pub user: u8,
@@ -19,19 +19,36 @@ pub struct Shared {
 
 impl Shared {
     // creates Shared struct that will be used in Arc<Mutex<Shared>>
-    // to be shared across threads <Arc> and across memory <Mutex>
+    // to be shared across threads <Arc> and across memory <Mutex>, enables locking
     pub fn new() -> Result<Self, Error> {
         let mut active_tiles = Vec::<Cell>::with_capacity(100 * 100);
 
-        for i in 0..20 {
+        for i in 0..61 {
             active_tiles.push(Cell {
                 owner: 0,
                 cell_type: 0,
-                x: 50 + i,
-                y: 50,
+                x: 9 + i,
+                y: 3,
             });
+
+            // active_tiles.push(Cell {
+            //     owner: 0,
+            //     cell_type: 0,
+            //     x: 9 + i,
+            //     y: 49,
+            // });
         }
 
+        // for i in 0..50 {
+        //     active_tiles.push(Cell {
+        //         owner: 0,
+        //         cell_type: 0,
+        //         x: 60,
+        //         y: 10 + i,
+        //     });
+        // }
+
+        // dfile!("{:?} {:?} ", active_tiles.capacity(), active_tiles.len());
         let actions = VecDeque::with_capacity(400);
 
         Ok(Shared {

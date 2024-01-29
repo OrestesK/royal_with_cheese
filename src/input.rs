@@ -17,7 +17,7 @@ fn key_delays(delay: &mut Instant, val: KeyEvent) -> Option<KeyCode> {
     let mut delay_value = 0.0;
     match val.code {
         KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => delay_value = 1.0,
-        KeyCode::Char('d') => delay_value = 1.0,
+        KeyCode::Char('d') => delay_value = 0.0,
         _ => {}
     }
 

@@ -1,5 +1,5 @@
 use crate::{
-    board::Cell, input::process_input, network::shared::Shared, network::shared::FPS,
+    board::Cell, dfile, input::process_input, network::shared::Shared, network::shared::FPS,
     network::shared_io::get_server_active_tiles,
 };
 use crossterm::{
@@ -43,8 +43,17 @@ pub fn print(stdout: &mut Stdout, tile: Cell) -> Result<()> {
     let color = COLORS[tile.owner as usize + 3];
     stdout
         .queue(SetForegroundColor(color))?
-        .queue(cursor::MoveTo(tile.x as u16, tile.y as u16))?
+        .queue(cursor::MoveTo((tile.x) as u16, (tile.y) as u16))?
         .queue(style::Print("█"))?;
+
+    if tile.owner == 1 {
+        stdout
+            .queue(SetForegroundColor(color))?
+            .queue(cursor::MoveTo(50, 10))?
+            .queue(style::Print(tile.x))?
+            .queue(cursor::MoveTo(50, 11))?
+            .queue(style::Print(tile.y))?;
+    }
 
     Ok(())
 }
@@ -69,9 +78,9 @@ pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> 
         stdout.queue(terminal::Clear(terminal::ClearType::All))?;
 
         let active_tiles = get_server_active_tiles(shared.clone());
+        dfile!("{:?} {:?} ", active_tiles.capacity(), active_tiles.len());
 
         for tile in active_tiles {
-            // eprintln!("{:#?}", tile);
             print(&mut stdout, tile)?;
         }
         stdout.flush()?;

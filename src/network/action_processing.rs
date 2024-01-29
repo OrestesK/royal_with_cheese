@@ -1,34 +1,34 @@
 use crate::{board::Cell, dinput, network::shared::Action};
 use std::collections::VecDeque;
 
-pub fn test_process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
-    for action in actions {
-        dinput!("{:#?}", action.code);
-        let updated_cell = Cell {
-            owner: action.user,
-            cell_type: action.user,
-            x: action.code,
-            y: action.user * 10,
-        };
-
-        let mut new_tile: i8 = -1;
-        for (i, tile) in active_tiles.clone().iter_mut().enumerate() {
-            if tile.x == updated_cell.x && tile.y == updated_cell.y {
-                new_tile = i as i8;
-                break;
-            }
-        }
-
-        if new_tile == -1 {
-            active_tiles.push(updated_cell);
-        } else {
-            active_tiles.remove(new_tile as usize);
-        }
-
-        dinput!("Active: {:#?}", active_tiles);
-    }
-    active_tiles
-}
+// pub fn test_process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
+//     for action in actions {
+//         dinput!("{:#?}", action.code);
+//         let updated_cell = Cell {
+//             owner: action.user,
+//             cell_type: action.user,
+//             x: action.code,
+//             y: action.user * 10,
+//         };
+//
+//         let mut new_tile: i8 = -1;
+//         for (i, tile) in active_tiles.clone().iter_mut().enumerate() {
+//             if tile.x == updated_cell.x && tile.y == updated_cell.y {
+//                 new_tile = i as i8;
+//                 break;
+//             }
+//         }
+//
+//         if new_tile == -1 {
+//             active_tiles.push(updated_cell);
+//         } else {
+//             active_tiles.remove(new_tile as usize);
+//         }
+//
+//         dinput!("Active: {:#?}", active_tiles);
+//     }
+//     active_tiles
+// }
 
 fn player_move_up(active_tiles: &mut Vec<Cell>, user: u8) {
     for tile in active_tiles {

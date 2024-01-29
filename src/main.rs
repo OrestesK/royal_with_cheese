@@ -1,10 +1,15 @@
+use crossterm::terminal;
+use crossterm::ExecutableCommand;
 use futures::executor::block_on;
 use royal_with_cheese::{
-    display, network::client_network::Client, network::server_network::Server,
+    display, dprint, network::client_network::Client, network::server_network::Server,
     network::shared::Shared,
 };
 use std::{
     env,
+    io::stdout,
+    panic,
+    process::exit,
     sync::{Arc, Mutex},
 };
 
@@ -15,7 +20,7 @@ const PORT: &str = "9000";
 async fn main() {
     let args: Vec<String> = env::args().collect();
 
-    // panic_hook();
+    panic_hook();
 
     if args.len() == 2 && args[1] == "S" {
         server()
@@ -25,15 +30,19 @@ async fn main() {
 }
 
 // declares panic hook
-// fn panic_hook() {
-//     panic::set_hook(Box::new(|panic_info| {
-//         if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-//             dprint!("panic: {:?}", s);
-//         } else {
-//             dprint!("panic occurred");
-//         }
-//     }));
-// }
+fn panic_hook() {
+    panic::set_hook(Box::new(|panic_info| {
+        if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            stdout()
+                .execute(terminal::Clear(terminal::ClearType::All))
+                .unwrap();
+            println!("panic: {:?}", s);
+            exit(1);
+        } else {
+            dprint!("panic occurred");
+        }
+    }));
+}
 
 // server side
 fn server() {
@@ -49,7 +58,7 @@ fn server() {
     tokio::spawn(Server::initialize_server(server, shared.clone()));
 
     // wait for 3 seconds, #TODO make a concurrent listener
-    let _ = tokio::time::sleep(tokio::time::Duration::from_secs(2)); //drop(var_name) to end early
+    // let _ = tokio::time::sleep(tokio::time::Duration::from_secs(2)); //drop(var_name) to end early
 
     // initializes and runs GUI
     // cursive_display::cursive(shared.clone(), false);
