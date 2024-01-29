@@ -1,5 +1,8 @@
 use futures::executor::block_on;
-use royal_with_cheese::{client_network::Client, display, server_network::Server, shared::Shared};
+use royal_with_cheese::{
+    display, network::client_network::Client, network::server_network::Server,
+    network::shared::Shared,
+};
 use std::{
     env,
     sync::{Arc, Mutex},

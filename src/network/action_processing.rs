@@ -1,9 +1,9 @@
-use super::{board::Cell, dclient, shared::Action};
+use crate::{board::Cell, dinput, network::shared::Action};
 use std::collections::VecDeque;
 
 pub fn test_process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
     for action in actions {
-        // eprintln!("{:#?}", action.code);
+        dinput!("{:#?}", action.code);
         let updated_cell = Cell {
             owner: action.user,
             cell_type: action.user,
@@ -25,7 +25,7 @@ pub fn test_process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Actio
             active_tiles.remove(new_tile as usize);
         }
 
-        dclient!("Active: {:#?}", active_tiles);
+        dinput!("Active: {:#?}", active_tiles);
     }
     active_tiles
 }
@@ -47,20 +47,21 @@ fn player_move_down(active_tiles: &mut Vec<Cell>, user: u8) {
 fn player_move_left(active_tiles: &mut Vec<Cell>, user: u8) {
     for tile in active_tiles {
         if tile.owner == user {
-            tile.x -= 1;
+            tile.x -= 2;
         }
     }
 }
 fn player_move_right(active_tiles: &mut Vec<Cell>, user: u8) {
     for tile in active_tiles {
         if tile.owner == user {
-            tile.x += 1;
+            tile.x += 2;
         }
     }
 }
 
 pub fn process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
     for action in actions {
+        dinput!("{:#?}", action.code);
         match action.code {
             119 => {
                 //up

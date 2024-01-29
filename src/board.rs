@@ -1,4 +1,4 @@
-use super::shared::Shared;
+use crate::network::shared::Shared;
 use std::sync::{Arc, Mutex};
 
 pub const BOARD_WIDTH: usize = 180;

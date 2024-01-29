@@ -1,7 +1,7 @@
-use super::{
+use crate::{
     dserver,
-    shared::{Shared, FPS},
-    shared_io::{active_tiles_to_data, add_tile, process_actions, push_action},
+    network::shared::{Shared, FPS},
+    network::shared_io::{active_tiles_to_data, add_tile, process_actions, push_action},
 };
 use std::{
     io::Error,

@@ -1,66 +1,19 @@
-use super::{board::Cell, shared::Shared, shared::FPS, shared_io};
+use crate::{
+    board::Cell, input::process_input, network::shared::Shared, network::shared::FPS,
+    network::shared_io::get_server_active_tiles,
+};
 use crossterm::{
     cursor,
-    event::{
-        DisableMouseCapture, EnableMouseCapture, Event, EventStream, KeyCode,
-        KeyCode::{Char, Esc},
-    },
+    event::{DisableMouseCapture, EnableMouseCapture},
     style::{self, Color, SetForegroundColor},
     terminal, ExecutableCommand, QueueableCommand, Result,
 };
-use futures::{future::FutureExt, select, StreamExt};
+use futures::future::FutureExt;
 use std::{
     io::{stdout, Stdout, Write},
     sync::{Arc, Mutex},
+    task::Poll,
 };
-
-async fn get_input() -> Option<KeyCode> {
-    // reader
-    let mut reader = EventStream::new();
-
-    // loops because there might be keypresses queued up
-    loop {
-        // gets event from reader
-        let mut event = reader.next().fuse();
-
-        select! {
-            maybe_event = event => {
-                match maybe_event {
-                    // Event available
-                    Some(Ok(event)) => {
-                        // Key Press
-                        match event{
-                            Event::Key(val) => return Some(val.code),
-                            _ => {},
-
-                        }
-                    }
-                    // Error
-                    Some(Err(e)) => panic!("Error: {:?}\r", e),
-                    // No event
-                    None => break,
-                }
-            }
-        };
-    }
-    None
-}
-fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
-    // dprint!("{:?}", data);
-    shared_io::push_action(shared.clone(), 0, data);
-}
-
-async fn process_input(shared: Arc<Mutex<Shared>>) {
-    let mut fps = fps_clock::FpsClock::new(FPS);
-    loop {
-        match get_input().await {
-            Some(Char(character)) => send_key_input(shared.clone(), character as u8),
-            Some(Esc) => send_key_input(shared.clone(), 255),
-            _ => {}
-        }
-        fps.tick();
-    }
-}
 
 const COLORS: [Color; 21] = [
     Color::Black,
@@ -103,30 +56,34 @@ pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> 
     let mut stdout = stdout();
     stdout = init(stdout)?;
 
-    tokio::spawn(process_input(shared.clone()));
+    // let a = process_input(shared.clone());
+    let mut input = tokio::spawn(process_input(shared.clone())).fuse();
 
     let mut fps = fps_clock::FpsClock::new(FPS);
 
     // while not pressed 'Esc'
-    'main: loop {
+    loop {
         // following render calls will keep rendering the last rendered state.
         stdout.execute(terminal::BeginSynchronizedUpdate)?;
 
         stdout.queue(terminal::Clear(terminal::ClearType::All))?;
 
-        let active_tiles = shared_io::get_server_active_tiles(shared.clone());
+        let active_tiles = get_server_active_tiles(shared.clone());
 
         for tile in active_tiles {
             // eprintln!("{:#?}", tile);
-            // TODO
-            if tile.x == 255 {
-                break 'main;
-            }
             print(&mut stdout, tile)?;
         }
         stdout.flush()?;
 
         stdout.execute(terminal::EndSynchronizedUpdate)?;
+
+        // if input returns (designed to do so when Esc), end program
+        match futures::poll!(&mut input) {
+            Poll::Pending => {}
+            Poll::Ready(_) => break,
+        }
+
         fps.tick();
     }
 

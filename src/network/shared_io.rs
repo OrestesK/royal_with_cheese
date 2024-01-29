@@ -1,8 +1,7 @@
-use crate::action_processing;
-
-use super::{
+use crate::{
     board::Cell,
-    shared::{Action, Shared},
+    network::action_processing,
+    network::shared::{Action, Shared},
 };
 use std::{
     collections::VecDeque,

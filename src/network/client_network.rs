@@ -1,7 +1,7 @@
-use super::{
+use crate::{
     dclient,
-    shared::{Shared, FPS},
-    shared_io::{data_to_active_tiles, get_and_clear_actions},
+    network::shared::{Shared, FPS},
+    network::shared_io::{data_to_active_tiles, get_and_clear_actions},
 };
 use std::{
     io::Error,
