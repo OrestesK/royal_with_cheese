@@ -61,11 +61,13 @@ pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> 
     if !is_client {
         return Ok(());
     }
+    // } else {
+    //     return Ok(());
+    // }
 
     let mut stdout = stdout();
     stdout = init(stdout)?;
 
-    // let a = process_input(shared.clone());
     let mut input = tokio::spawn(process_input(shared.clone())).fuse();
 
     let mut fps = fps_clock::FpsClock::new(FPS);
@@ -78,7 +80,12 @@ pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> 
         stdout.queue(terminal::Clear(terminal::ClearType::All))?;
 
         let active_tiles = get_server_active_tiles(shared.clone());
-        dfile!("{:?} {:?} ", active_tiles.capacity(), active_tiles.len());
+        dfile!(
+            "{:?} {:?} {:?} \n",
+            is_client,
+            active_tiles.capacity(),
+            active_tiles.len()
+        );
 
         for tile in active_tiles {
             print(&mut stdout, tile)?;

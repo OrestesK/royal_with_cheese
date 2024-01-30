@@ -45,6 +45,7 @@ impl Client {
         //
         // write
         //
+        dclient!("Writing data to server");
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
             let actions = get_and_clear_actions(shared.clone());
@@ -69,20 +70,24 @@ impl Client {
         //
         // read
         //
+        dclient!("Reading data from server");
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
+            dclient!("looping");
             // reads size of incoming data
             let size = read_from_server_connection
-                .read_u8()
+                .read_u16()
                 .await
-                .expect("Failed to read content size") as usize;
+                .expect("Failed to read content size") as u16;
+            dclient!("debug");
             if size == 0 {
                 dclient!("Empty active tiles"); //only happens whens debugging
                 fps.tick();
                 continue;
             }
 
-            let mut active_tiles_data = vec![0; size];
+            // VERY CAREFUL, usize can be smaller than u16 VERY BAD
+            let mut active_tiles_data = vec![0; size as usize];
             read_from_server_connection
                 .read_exact(&mut active_tiles_data)
                 .await

@@ -58,7 +58,7 @@ fn server() {
     tokio::spawn(Server::initialize_server(server, shared.clone()));
 
     // wait for 3 seconds, #TODO make a concurrent listener
-    // let _ = tokio::time::sleep(tokio::time::Duration::from_secs(2)); //drop(var_name) to end early
+    let _ = tokio::time::sleep(tokio::time::Duration::from_secs(2)); //drop(var_name) to end early
 
     // initializes and runs GUI
     // cursive_display::cursive(shared.clone(), false);
@@ -82,5 +82,5 @@ fn client() {
     // initializes and runs GUI
     // cursive_display::cursive(shared.clone(), true);
     block_on(display::display(shared.clone(), true)).expect("CLIENT DISPLAY ERROR");
-    std::process::exit(0);
+    // loop {}
 }

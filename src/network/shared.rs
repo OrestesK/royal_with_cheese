@@ -1,7 +1,7 @@
-use crate::{board::Cell, dfile};
+use crate::board::Cell;
 use std::{collections::VecDeque, io::Error};
 
-pub const FPS: u32 = 120; // GETS WONKY AT HIGH FPS
+pub const FPS: u32 = 60; // GETS WONKY AT HIGH FPS
 
 // struct Action
 #[derive(Clone, Debug)]
@@ -23,7 +23,7 @@ impl Shared {
     pub fn new() -> Result<Self, Error> {
         let mut active_tiles = Vec::<Cell>::with_capacity(100 * 100);
 
-        for i in 0..61 {
+        for i in 0..60 {
             active_tiles.push(Cell {
                 owner: 0,
                 cell_type: 0,
@@ -49,6 +49,8 @@ impl Shared {
         // }
 
         // dfile!("{:?} {:?} ", active_tiles.capacity(), active_tiles.len());
+        // TODO
+        // 400 is random number I picked
         let actions = VecDeque::with_capacity(400);
 
         Ok(Shared {

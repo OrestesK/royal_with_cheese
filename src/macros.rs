@@ -30,7 +30,7 @@ macro_rules! dinput{
 
 #[macro_export]
 macro_rules! dfile{
-    ($($arg:tt)*) => (if true {
+    ($($arg:tt)*) => (if false {
         use crate::macros::to_file;
         to_file(format_args!($($arg)*));
     })

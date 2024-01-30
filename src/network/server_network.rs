@@ -39,10 +39,12 @@ impl Server {
     async fn write_data_to_client(
         shared: Arc<Mutex<Shared>>,
         mut client_write_connection: OwnedWriteHalf,
+        id: u8,
     ) -> Result<(), Error> {
         //
         // write
         //
+        dserver!("Writing to client {:?}", id);
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
             let data_to_send = active_tiles_to_data(shared.clone());
@@ -52,14 +54,19 @@ impl Server {
             }
 
             _ = client_write_connection
-                .write_u8(data_to_send.len() as u8)
+                .write_u16(data_to_send.len() as u16)
                 .await?;
 
             _ = client_write_connection
                 .write_all(data_to_send.as_slice())
                 .await?;
 
-            dserver!("Sent: {:?}", data_to_send.as_slice());
+            dserver!(
+                "Sent: [{:?}:{:?}] {:?}",
+                id,
+                data_to_send.len() / 3,
+                data_to_send.as_slice()
+            );
 
             fps.tick();
         }
@@ -74,6 +81,7 @@ impl Server {
         //
         // read
         //
+        dserver!("Reading from client {:?}", id);
         let mut fps = fps_clock::FpsClock::new(FPS);
         loop {
             let action = client_read_connection.read_u8().await?;
@@ -84,6 +92,7 @@ impl Server {
 
             dserver!("Received: {:?} from Client {:?}", action, id);
 
+            // WANTED only a single thread for this
             // processes client actions (updates active tiles)
             // tokio::spawn(process_actions(shared.clone()));
 
@@ -131,7 +140,7 @@ impl Server {
 
             // spawns reading and writing threads
             tokio::spawn(Server::read_data_from_client(shared.clone(), read, id));
-            tokio::spawn(Server::write_data_to_client(shared.clone(), write));
+            tokio::spawn(Server::write_data_to_client(shared.clone(), write, id));
         }
     }
 }
