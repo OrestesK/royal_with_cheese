@@ -58,9 +58,9 @@ pub fn print(stdout: &mut Stdout, tile: Cell) -> Result<()> {
     Ok(())
 }
 pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> {
-    if !is_client {
-        return Ok(());
-    }
+    // if !is_client {
+    //     return Ok(());
+    // }
     // } else {
     //     return Ok(());
     // }

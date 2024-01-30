@@ -17,36 +17,38 @@ pub struct Shared {
     pub actions: VecDeque<Action>,
 }
 
+fn new_wall(x: u8, y: u8) -> Cell {
+    Cell {
+        owner: 0,
+        cell_type: 0,
+        x,
+        y,
+    }
+}
 impl Shared {
     // creates Shared struct that will be used in Arc<Mutex<Shared>>
     // to be shared across threads <Arc> and across memory <Mutex>, enables locking
     pub fn new() -> Result<Self, Error> {
         let mut active_tiles = Vec::<Cell>::with_capacity(100 * 100);
 
-        for i in 0..60 {
-            active_tiles.push(Cell {
-                owner: 0,
-                cell_type: 0,
-                x: 9 + i,
-                y: 3,
-            });
+        const WIDTH: u8 = 192;
+        const HEIGHT: u8 = 45;
+        const START_X: u8 = 10;
 
-            // active_tiles.push(Cell {
-            //     owner: 0,
-            //     cell_type: 0,
-            //     x: 9 + i,
-            //     y: 49,
-            // });
+        for i in 0..WIDTH {
+            //top wall
+            active_tiles.push(new_wall(START_X + i, 3));
+            //bottom wall
+            active_tiles.push(new_wall(START_X + i, 49));
         }
-
-        // for i in 0..50 {
-        //     active_tiles.push(Cell {
-        //         owner: 0,
-        //         cell_type: 0,
-        //         x: 60,
-        //         y: 10 + i,
-        //     });
-        // }
+        for i in 0..HEIGHT {
+            // left wall
+            active_tiles.push(new_wall(START_X, 4 + i));
+            active_tiles.push(new_wall(START_X + 1, 4 + i));
+            //right wall
+            active_tiles.push(new_wall(START_X + WIDTH - 2, 4 + i));
+            active_tiles.push(new_wall(START_X + WIDTH - 1, 4 + i));
+        }
 
         // dfile!("{:?} {:?} ", active_tiles.capacity(), active_tiles.len());
         // TODO
