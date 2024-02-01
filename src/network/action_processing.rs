@@ -1,4 +1,4 @@
-use crate::{board::Cell, dinput, network::shared::Action};
+use crate::{board::Cell, dfile, dinput, network::shared::Action};
 use std::collections::VecDeque;
 
 // pub fn test_process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
@@ -30,59 +30,100 @@ use std::collections::VecDeque;
 //     active_tiles
 // }
 
-fn player_move_up(active_tiles: &mut Vec<Cell>, user: u8) {
+fn is_player(tile: &mut Cell, user: u8) -> bool {
+    return tile.owner == user && tile.cell_type == 0;
+}
+
+// MY SCREEN BORDERS
+// X | >=2 | <=210
+// Y | >=1 | <=52
+fn move_up(tile: &mut Cell) {
+    if tile.y >= 1 {
+        tile.y -= 1;
+    }
+}
+fn move_down(tile: &mut Cell) {
+    if tile.y <= 52 {
+        tile.y += 1;
+    }
+}
+fn move_right(tile: &mut Cell) {
+    if tile.x <= 210 {
+        tile.x += 2;
+    }
+}
+fn move_left(tile: &mut Cell) {
+    if tile.x >= 2 {
+        tile.x -= 2;
+    }
+}
+
+// 199 | w | move up
+// 115 | s | move down
+// 97 | a | move left
+// 100 | d | move right
+//
+// 1 | up key
+fn player_move(active_tiles: &mut Vec<Cell>, action: u8, user: u8) {
+    let move_function: &dyn Fn(&mut Cell);
+    match action {
+        119 => move_function = &move_up,
+        115 => move_function = &move_down,
+        97 => move_function = &move_left,
+        100 => move_function = &move_right,
+        _ => panic!("impossible error"),
+    }
     for tile in active_tiles {
-        if tile.owner == user {
-            tile.y -= 1;
+        if is_player(tile, user) {
+            move_function(tile);
         }
     }
 }
-fn player_move_down(active_tiles: &mut Vec<Cell>, user: u8) {
+
+// TODO
+// determine where shot spawns
+fn player_shoot(active_tiles: &mut Vec<Cell>, action: u8, user: u8) {
+    let user_x: u8;
+    let user_y: u8;
     for tile in active_tiles {
-        if tile.owner == user {
-            tile.y += 1;
-        }
+        if is_player(tile, user) {}
     }
+
+    let shot = Cell {
+        owner: user,
+        cell_type: action,
+        x: user.x,
+        y: 0,
+    };
+    active_tiles.push(shot);
 }
-fn player_move_left(active_tiles: &mut Vec<Cell>, user: u8) {
+
+// TODO
+// process shot
+fn game_loop(active_tiles: &mut Vec<Cell>) {
     for tile in active_tiles {
-        if tile.owner == user {
-            tile.x -= 2;
-        }
-    }
-}
-fn player_move_right(active_tiles: &mut Vec<Cell>, user: u8) {
-    for tile in active_tiles {
-        if tile.owner == user {
-            tile.x += 2;
+        match tile.cell_type {
+            1 => {}
+            2 => {}
+            3 => {}
+            4 => {}
+            _ => {}
         }
     }
 }
 
 pub fn process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
+    game_loop(&mut active_tiles);
     for action in actions {
         dinput!("{:#?}", action.code);
         match action.code {
-            119 => {
-                //up
-                player_move_up(&mut active_tiles, action.user);
+            119 | 115 | 97 | 100 => {
+                player_move(&mut active_tiles, action.code, action.user);
             }
-
-            115 => {
-                //down
-                player_move_down(&mut active_tiles, action.user);
+            1 | 2 | 3 | 4 => player_shoot(&mut active_tiles, action.code, action.user),
+            _ => {
+                dfile!("{:?}", action.code)
             }
-
-            97 => {
-                //left
-                player_move_left(&mut active_tiles, action.user);
-            }
-
-            100 => {
-                //right
-                player_move_right(&mut active_tiles, action.user);
-            }
-            _ => {}
         }
     }
     active_tiles

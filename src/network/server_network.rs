@@ -61,12 +61,12 @@ impl Server {
                 .write_all(data_to_send.as_slice())
                 .await?;
 
-            dserver!(
-                "Sent: [{:?}:{:?}] {:?}",
-                id,
-                data_to_send.len() / 3,
-                data_to_send.as_slice()
-            );
+            // dserver!(
+            //     "Sent: [{:?}:{:?}] {:?}",
+            //     id,
+            //     data_to_send.len() / 3,
+            //     data_to_send.as_slice()
+            // );
 
             fps.tick();
         }
@@ -131,9 +131,10 @@ impl Server {
             );
 
             // places user on map
+            // TODO
+            // randomize this inside the playing area
             add_tile(shared.clone(), id, 0, 20 * id, 20 * id).await;
             add_tile(shared.clone(), id, 0, 20 * id + 1, 20 * id).await;
-            add_tile(shared.clone(), id, 0, 20 * id + 2, 20 * id).await;
 
             // splits connection into read and write connections
             let (read, write) = client_connection.into_split();

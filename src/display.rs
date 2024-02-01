@@ -1,5 +1,5 @@
 use crate::{
-    board::Cell, dfile, input::process_input, network::shared::Shared, network::shared::FPS,
+    board::Cell, input::process_input, network::shared::Shared, network::shared::FPS,
     network::shared_io::get_server_active_tiles,
 };
 use crossterm::{
@@ -58,9 +58,9 @@ pub fn print(stdout: &mut Stdout, tile: Cell) -> Result<()> {
     Ok(())
 }
 pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> {
-    // if !is_client {
-    //     return Ok(());
-    // }
+    if !is_client {
+        return Ok(());
+    }
     // } else {
     //     return Ok(());
     // }
@@ -80,13 +80,6 @@ pub async fn display(shared: Arc<Mutex<Shared>>, is_client: bool) -> Result<()> 
         stdout.queue(terminal::Clear(terminal::ClearType::All))?;
 
         let active_tiles = get_server_active_tiles(shared.clone());
-        dfile!(
-            "{:?} {:?} {:?} \n",
-            is_client,
-            active_tiles.capacity(),
-            active_tiles.len()
-        );
-
         for tile in active_tiles {
             print(&mut stdout, tile)?;
         }

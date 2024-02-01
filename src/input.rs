@@ -1,4 +1,6 @@
-use crate::{network::shared::Shared, network::shared::FPS, network::shared_io::push_action};
+use crate::{
+    dinput, network::shared::Shared, network::shared::FPS, network::shared_io::push_action,
+};
 use crossterm::event::{
     Event, EventStream, KeyCode,
     KeyCode::{Char, Esc},
@@ -9,15 +11,15 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
-    // dinput!("{:?}", data);
+    dinput!("{:?}", data);
     push_action(shared.clone(), 0, data);
 }
 
 fn key_delays(delay: &mut Instant, val: KeyEvent) -> Option<KeyCode> {
     let mut delay_value = 0.0;
     match val.code {
-        KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => delay_value = 1.0,
-        KeyCode::Char('d') => delay_value = 0.0,
+        KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => delay_value = 0.5,
+        KeyCode::Char(_) => delay_value = 0.15,
         _ => {}
     }
 
@@ -69,6 +71,10 @@ pub async fn process_input(shared: Arc<Mutex<Shared>>) {
     loop {
         match get_input(&mut delay).await {
             Some(Char(character)) => send_key_input(shared.clone(), character as u8),
+            Some(KeyCode::Up) => send_key_input(shared.clone(), 1),
+            Some(KeyCode::Down) => send_key_input(shared.clone(), 2),
+            Some(KeyCode::Left) => send_key_input(shared.clone(), 3),
+            Some(KeyCode::Right) => send_key_input(shared.clone(), 4),
             Some(Esc) => return,
             _ => {}
         }

@@ -5,7 +5,7 @@ pub fn to_file(data: Arguments) {
         .append(true)
         .open("./log")
         .expect("open log failed");
-    write!(f, "{}", data.to_string()).expect("write log failed");
+    write!(f, "{}\n", data.to_string()).expect("write log failed");
 }
 // creates debugging macro
 #[macro_export]
@@ -15,7 +15,7 @@ macro_rules! dprint {
 
 #[macro_export]
 macro_rules! dserver {
-    ($($arg:tt)*) => (if false { ::std::eprintln!($($arg)*); })
+    ($($arg:tt)*) => (if true { ::std::eprintln!($($arg)*); })
 }
 
 #[macro_export]

@@ -33,7 +33,7 @@ impl Shared {
 
         const WIDTH: u8 = 192;
         const HEIGHT: u8 = 45;
-        const START_X: u8 = 10;
+        const START_X: u8 = 11;
 
         for i in 0..WIDTH {
             //top wall
