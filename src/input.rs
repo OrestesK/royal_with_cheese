@@ -18,7 +18,7 @@ fn send_key_input(shared: Arc<Mutex<Shared>>, data: u8) {
 fn key_delays(delay: &mut Instant, val: KeyEvent) -> Option<KeyCode> {
     let mut delay_value = 0.0;
     match val.code {
-        KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => delay_value = 0.5,
+        KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => delay_value = 0.3,
         KeyCode::Char(_) => delay_value = 0.15,
         _ => {}
     }
@@ -29,9 +29,8 @@ fn key_delays(delay: &mut Instant, val: KeyEvent) -> Option<KeyCode> {
     if delay.elapsed().as_secs_f64() < delay_value {
         // continue;
         return None;
-    } else {
-        *delay = Instant::now();
     }
+    *delay = Instant::now();
     return Some(val.code);
 }
 async fn get_input(mut delay: &mut Instant) -> Option<KeyCode> {

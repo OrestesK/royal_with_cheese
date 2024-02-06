@@ -1,11 +1,14 @@
 use crate::{
     dserver,
     network::shared::{Shared, FPS},
-    network::shared_io::{active_tiles_to_data, add_tile, process_actions, push_action},
+    network::shared_io::{
+        active_tiles_to_data, add_tile, process_actions, process_game, push_action,
+    },
 };
 use std::{
     io::Error,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -110,8 +113,20 @@ impl Server {
         }
     }
 
+    async fn game_loop(shared: Arc<Mutex<Shared>>) {
+        let mut fps = fps_clock::FpsClock::new(FPS);
+
+        let mut delay = &mut Instant::now();
+        loop {
+            process_game(shared.clone(), &mut delay).await;
+            fps.tick();
+        }
+    }
+
     // initializes server, loop runs constantly to accept new clients
     pub async fn initialize_server(self, shared: Arc<Mutex<Shared>>) {
+        // game loop
+        tokio::spawn(Server::game_loop(shared.clone()));
         // process actions
         tokio::spawn(Server::process_all_client_actions(shared.clone()));
 

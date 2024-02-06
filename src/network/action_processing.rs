@@ -1,37 +1,42 @@
 use crate::{board::Cell, dfile, dinput, network::shared::Action};
+use std::cmp::min;
 use std::collections::VecDeque;
 
-// pub fn test_process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
-//     for action in actions {
-//         dinput!("{:#?}", action.code);
-//         let updated_cell = Cell {
-//             owner: action.user,
-//             cell_type: action.user,
-//             x: action.code,
-//             y: action.user * 10,
-//         };
-//
-//         let mut new_tile: i8 = -1;
-//         for (i, tile) in active_tiles.clone().iter_mut().enumerate() {
-//             if tile.x == updated_cell.x && tile.y == updated_cell.y {
-//                 new_tile = i as i8;
-//                 break;
-//             }
-//         }
-//
-//         if new_tile == -1 {
-//             active_tiles.push(updated_cell);
-//         } else {
-//             active_tiles.remove(new_tile as usize);
-//         }
-//
-//         dinput!("Active: {:#?}", active_tiles);
-//     }
-//     active_tiles
-// }
-
+// returns Cell at (x ,y)
+fn find_tile(active_tiles: &mut Vec<Cell>, x: u8, y: u8) -> Option<&mut Cell> {
+    let mut cell: Option<&mut Cell> = None;
+    for tile in active_tiles {
+        if tile.x == x && tile.y == y {
+            cell = Some(tile);
+        }
+    }
+    cell
+}
+// returns if tile is a player
 fn is_player(tile: &mut Cell, user: u8) -> bool {
     return tile.owner == user && tile.cell_type == 0;
+}
+// returns top tile of the player
+fn find_player(active_tiles: &mut Vec<Cell>, user: u8) -> Option<(u8, u8)> {
+    let mut x: u8 = 0;
+    let mut y: u8 = 0;
+    let mut found = true;
+    for tile in active_tiles {
+        if is_player(tile, user) {
+            if found {
+                x = tile.x;
+                y = tile.y;
+                found = false;
+            } else {
+                y = min(y, tile.y);
+                break;
+            }
+        }
+    }
+    if found {
+        return None;
+    }
+    Some((x, y))
 }
 
 // MY SCREEN BORDERS
@@ -80,40 +85,29 @@ fn player_move(active_tiles: &mut Vec<Cell>, action: u8, user: u8) {
     }
 }
 
-// TODO
-// determine where shot spawns
 fn player_shoot(active_tiles: &mut Vec<Cell>, action: u8, user: u8) {
-    let user_x: u8;
-    let user_y: u8;
-    for tile in active_tiles {
-        if is_player(tile, user) {}
+    let bullet_x;
+    let bullet_y;
+
+    let player_location = find_player(active_tiles, user).expect("PLAYER SHOT WITHOUT EXISTING");
+    bullet_x = player_location.0;
+
+    match action {
+        1 | 3 | 4 => bullet_y = player_location.1,
+        2 => bullet_y = player_location.1 + 1,
+        _ => panic!("impossible error"),
     }
 
     let shot = Cell {
         owner: user,
         cell_type: action,
-        x: user.x,
-        y: 0,
+        x: bullet_x,
+        y: bullet_y,
     };
     active_tiles.push(shot);
 }
 
-// TODO
-// process shot
-fn game_loop(active_tiles: &mut Vec<Cell>) {
-    for tile in active_tiles {
-        match tile.cell_type {
-            1 => {}
-            2 => {}
-            3 => {}
-            4 => {}
-            _ => {}
-        }
-    }
-}
-
 pub fn process_actions(mut active_tiles: Vec<Cell>, actions: VecDeque<Action>) -> Vec<Cell> {
-    game_loop(&mut active_tiles);
     for action in actions {
         dinput!("{:#?}", action.code);
         match action.code {
